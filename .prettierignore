@@ -1,0 +1,8 @@
+**/dist/
+**/node_modules/
+**/target/
+**/gen/schemas/
+docs/design/
+work/
+pnpm-lock.yaml
+package-lock.json

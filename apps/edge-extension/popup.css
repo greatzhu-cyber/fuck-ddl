@@ -1,0 +1,99 @@
+:root {
+  color: #18212f;
+  background: #ffffff;
+  font:
+    13px/1.45 "Segoe UI",
+    sans-serif;
+}
+body {
+  width: 286px;
+  margin: 0;
+}
+header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 15px 16px;
+  border-bottom: 1px solid #e5e8ee;
+}
+header > span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #315efb;
+  box-shadow: 0 0 0 5px #e9efff;
+}
+header div {
+  display: grid;
+}
+header small,
+main p,
+dt {
+  color: #7a818d;
+}
+main {
+  padding: 14px 16px 16px;
+}
+main p {
+  margin: 0 0 13px;
+}
+dl {
+  margin: 0;
+}
+dl div {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid #eef1f6;
+}
+dd {
+  margin: 0;
+  color: #12965d;
+  font-weight: 650;
+}
+.status {
+  margin-top: 14px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  color: #7a818d;
+  background: #f7f8fa;
+}
+.status > strong {
+  display: block;
+}
+.status > p {
+  margin: 5px 0 0;
+  color: inherit;
+  font-size: 12px;
+}
+.status-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 9px;
+}
+.status-footer small {
+  opacity: 0.72;
+}
+.status-footer button {
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.status-footer button:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
+.status.connected {
+  color: #147a52;
+  background: #f2fbf7;
+}
+.status.disconnected {
+  color: #b54708;
+  background: #fff5e7;
+}

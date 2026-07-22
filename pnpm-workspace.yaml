@@ -1,0 +1,6 @@
+packages:
+  - "apps/desktop"
+  - "apps/web"
+  - "packages/*"
+allowBuilds:
+  esbuild: true

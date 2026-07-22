@@ -1,0 +1,80 @@
+:root {
+  color: #172033;
+  background: #f7f8fc;
+  font-family:
+    "Segoe UI",
+    "Microsoft YaHei UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(255, 117, 94, 0.18),
+      transparent 48%
+    ),
+    #f7f8fc;
+}
+
+main {
+  width: 100%;
+  padding: 28px 30px;
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: white;
+  background: #e5484d;
+  box-shadow: 0 12px 28px rgba(229, 72, 77, 0.24);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.eyebrow {
+  margin: 1px 0 5px;
+  color: #e5484d;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-size: 25px;
+  line-height: 1.15;
+}
+
+p {
+  margin: 0 0 14px;
+  color: #4d5870;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+strong {
+  color: #172033;
+}
+
+small {
+  color: #7a8499;
+  font-size: 12px;
+}

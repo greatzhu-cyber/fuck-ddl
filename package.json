@@ -1,0 +1,41 @@
+{
+  "name": "fuck-ddl",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "workspaces": [
+    "apps/desktop",
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --filter @fuck-ddl/web dev",
+    "desktop:build": "pnpm --filter @fuck-ddl/desktop build",
+    "desktop:installer": "pnpm --filter @fuck-ddl/desktop build:installer",
+    "desktop:dev": "pnpm --filter @fuck-ddl/desktop dev",
+    "edge:build": "node apps/edge-extension/scripts/build.mjs",
+    "edge:test": "node apps/edge-extension/scripts/smoke-test.mjs",
+    "native-host:build": "cargo build --manifest-path apps/native-host/Cargo.toml --release",
+    "build": "pnpm --filter @fuck-ddl/domain test && pnpm --filter @fuck-ddl/web build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm schema:check && pnpm test && pnpm build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "schema:check": "node scripts/verify-schema.mjs",
+    "test": "pnpm -r test",
+    "test:domain": "pnpm --filter @fuck-ddl/domain test",
+    "test:web": "pnpm --filter @fuck-ddl/web test",
+    "typecheck": "tsc -p packages/domain/tsconfig.json"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^10.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4",
+    "typescript": "^6.0.3"
+  }
+}

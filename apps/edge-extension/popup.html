@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fuck DDL Focus Guard</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <span></span>
+      <div>
+        <strong>Focus Guard</strong>
+        <small>Fuck DDL</small>
+      </div>
+    </header>
+    <main>
+      <p>只读取当前活动标签页的域名。</p>
+      <dl>
+        <div>
+          <dt>完整 URL</dt>
+          <dd>不读取</dd>
+        </div>
+        <div>
+          <dt>页面标题</dt>
+          <dd>不读取</dd>
+        </div>
+        <div>
+          <dt>网页内容</dt>
+          <dd>不读取</dd>
+        </div>
+      </dl>
+      <div id="bridge-status" class="status checking">
+        <strong id="bridge-title">正在检查桌面连接…</strong>
+        <p id="bridge-detail"></p>
+        <div class="status-footer">
+          <small id="bridge-checked-at"></small>
+          <button id="bridge-retry" type="button">重新检查</button>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

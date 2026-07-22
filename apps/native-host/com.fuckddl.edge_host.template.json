@@ -1,0 +1,7 @@
+{
+  "name": "com.fuckddl.edge_host",
+  "description": "Fuck DDL local domain-event bridge",
+  "path": "${HOST_PATH}",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://${EXTENSION_ID}/"]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@fuck-ddl/desktop",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "build": "tauri build --no-bundle",
+    "build:installer": "tauri build --bundles nsis",
+    "dev": "tauri dev",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4"
+  }
+}

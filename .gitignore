@@ -1,0 +1,29 @@
+﻿node_modules/
+.pnpm-store/
+dist/
+target/
+**/target-*/
+**/.e2e/
+**/gen/schemas/
+.vite/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+
+# Local credentials and platform sessions must never be committed.
+*.cookie
+*.session
+*.token
+
+# Windows and editor artifacts.
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+# Local work products, backups, caches, and unrelated personal files.
+work/
+tmp/
+apps/web/.npm-cache/
+misc_lab1_report_complete.tex
