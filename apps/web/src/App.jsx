@@ -125,6 +125,10 @@ import {
   restoreBackupDocument,
 } from "./backup.js";
 import { saveDesktopBackup } from "./desktop-backup.js";
+import {
+  DESKTOP_DATABASE_STATUS_EVENT,
+  getDesktopDatabaseStatus,
+} from "./desktop-sqlite.js";
 import { GradebookView } from "./GradebookView.jsx";
 import {
   DEFAULT_GRADE_SYNC_SETTINGS,
@@ -753,7 +757,22 @@ function StatsView({
   );
 }
 
+function databaseStatusText(status) {
+  if (status.state === "ready") {
+    const lastWrite = status.lastWriteAt
+      ? " · 最近写入 " + new Date(status.lastWriteAt).toLocaleString()
+      : "";
+    return "SQLite 正常 · " + status.rowCount + " 个状态键" + lastWrite;
+  }
+  if (status.state === "degraded") {
+    return "SQLite 不可用，当前已安全降级到 WebView 本地存储和 JSON 备份。";
+  }
+  if (status.state === "starting") return "正在检查 SQLite 数据镜像。";
+  return "浏览器模式使用本地存储；桌面版会额外启用 SQLite 镜像。";
+}
+
 function SettingsView({
+  databaseStatus,
   whitelist,
   onAddDomain,
   onRemoveDomain,
@@ -798,6 +817,12 @@ function SettingsView({
             <Plus /> 添加域名
           </button>
         </form>
+      </article>
+      <article className="settings-block">
+        <div>
+          <h2>桌面数据保护</h2>
+          <p aria-live="polite">{databaseStatusText(databaseStatus)}</p>
+        </div>
       </article>
       <article className="settings-block backup-block">
         <div>
@@ -1070,6 +1095,9 @@ export function App() {
   const [zjuStatus, setZjuStatus] = useState(() =>
     isTauriDesktop() ? "checking" : "desktop-required",
   );
+  const [desktopDatabaseStatus, setDesktopDatabaseStatus] = useState(
+    getDesktopDatabaseStatus,
+  );
   const [sessionWhitelist, setSessionWhitelist] = useState([]);
   const [toast, setToast] = useState("");
   const previousPhase = useRef(focusState.phase);
@@ -1080,6 +1108,20 @@ export function App() {
   const gradeSyncSettingsRef = useRef(gradeSyncSettings);
   const zjuCourseCatalogRef = useRef(zjuCourseCatalog);
 
+  useEffect(() => {
+    function handleDesktopDatabaseStatus(event) {
+      setDesktopDatabaseStatus(event.detail);
+    }
+    window.addEventListener(
+      DESKTOP_DATABASE_STATUS_EVENT,
+      handleDesktopDatabaseStatus,
+    );
+    return () =>
+      window.removeEventListener(
+        DESKTOP_DATABASE_STATUS_EVENT,
+        handleDesktopDatabaseStatus,
+      );
+  }, []);
   const presets = useMemo(
     () => [...defaultPresets, ...customPresets],
     [customPresets],
@@ -2596,6 +2638,7 @@ export function App() {
     if (activeView === "settings")
       return (
         <SettingsView
+          databaseStatus={desktopDatabaseStatus}
           whitelist={permanentWhitelist}
           onAddDomain={addWhitelistDomain}
           onRemoveDomain={removeWhitelistDomain}

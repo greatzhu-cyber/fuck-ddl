@@ -546,6 +546,7 @@ describe("Fuck DDL core interactions", () => {
   it("manages the permanent work-domain whitelist", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    expect(screen.getByText(/浏览器模式使用本地存储/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("添加工作网站域名"), {
       target: { value: "https://docs.example.com/guide" },
     });

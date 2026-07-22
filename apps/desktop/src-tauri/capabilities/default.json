@@ -3,5 +3,10 @@
   "identifier": "default",
   "description": "Default capability for the main Fuck DDL window",
   "windows": ["main"],
-  "permissions": ["core:default", "notification:default", "sql:default"]
+  "permissions": [
+    "core:default",
+    "notification:default",
+    "sql:default",
+    "sql:allow-execute"
+  ]
 }

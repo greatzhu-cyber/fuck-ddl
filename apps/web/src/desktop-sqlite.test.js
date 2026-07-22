@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  bootstrapDesktopState,
+  getDesktopDatabaseStatus,
+  openDesktopDatabase,
   persistDesktopState,
   resetDesktopDatabaseForTests,
   restoreDesktopState,
@@ -9,13 +12,44 @@ vi.mock("./integrations/pintia-desktop.js", () => ({
   isTauriDesktop: () => true,
 }));
 
+function createStorage(initial = {}) {
+  const state = new Map(Object.entries(initial));
+  return {
+    get length() {
+      return state.size;
+    },
+    key(index) {
+      return [...state.keys()][index] ?? null;
+    },
+    getItem(key) {
+      return state.get(key) ?? null;
+    },
+    setItem(key, value) {
+      state.set(key, value);
+    },
+  };
+}
+
 describe("desktop SQLite state mirror", () => {
   beforeEach(() => resetDesktopDatabaseForTests());
 
+  it("creates the state table when opening the desktop database", async () => {
+    const execute = vi.fn().mockResolvedValue({ rowsAffected: 0 });
+    const load = vi.fn().mockResolvedValue({ execute });
+
+    await expect(openDesktopDatabase({ load })).resolves.toEqual({ execute });
+
+    expect(load).toHaveBeenCalledWith("sqlite:fuck-ddl.db");
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining("CREATE TABLE IF NOT EXISTS app_state"),
+    );
+  });
+
   it("restores only valid serialized state rows", async () => {
-    const setItem = vi.fn();
+    const storage = createStorage();
+    const setItem = vi.spyOn(storage, "setItem");
     const result = await restoreDesktopState({
-      storage: { setItem },
+      storage,
       openDatabase: async () => ({
         select: async () => [
           {
@@ -33,25 +67,120 @@ describe("desktop SQLite state mirror", () => {
     );
   });
 
+  it("does not overwrite a valid local value with an older mirror row", async () => {
+    const storage = createStorage({
+      "fuck-ddl:v1:tasks": '{"version":1,"value":["local"]}',
+    });
+    const setItem = vi.spyOn(storage, "setItem");
+
+    await expect(
+      restoreDesktopState({
+        storage,
+        openDatabase: async () => ({
+          select: async () => [
+            {
+              state_key: "fuck-ddl:v1:tasks",
+              encoded_value: '{"version":1,"value":["database"]}',
+            },
+          ],
+        }),
+      }),
+    ).resolves.toEqual({ restored: 0, skipped: false });
+
+    expect(setItem).not.toHaveBeenCalled();
+    expect(storage.getItem("fuck-ddl:v1:tasks")).toContain("local");
+  });
+
+  it("restores missing rows and backfills all valid local business state", async () => {
+    const storage = createStorage({
+      "fuck-ddl:v1:tasks": '{"version":1,"value":[]}',
+      "fuck-ddl:auth": '{"version":1,"value":"secret"}',
+      "fuck-ddl:v1:old": '{"version":0,"value":"ignored"}',
+    });
+    const execute = vi.fn().mockResolvedValue({ rowsAffected: 1 });
+    const select = vi.fn().mockResolvedValue([
+      {
+        state_key: "fuck-ddl:v1:goals",
+        encoded_value: '{"version":1,"value":[]}',
+      },
+    ]);
+
+    await expect(
+      bootstrapDesktopState({
+        storage,
+        openDatabase: async () => ({ execute, select }),
+        now: () => "2026-07-23T00:00:00.000Z",
+      }),
+    ).resolves.toMatchObject({
+      state: "ready",
+      rowCount: 2,
+      restored: 1,
+      mirrored: 2,
+      lastWriteAt: "2026-07-23T00:00:00.000Z",
+    });
+
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(execute.mock.calls.map((call) => call[1][0])).toEqual([
+      "fuck-ddl:v1:tasks",
+      "fuck-ddl:v1:goals",
+    ]);
+  });
+
+  it("reports degraded state while preserving startup fallback on failure", async () => {
+    await expect(
+      bootstrapDesktopState({
+        storage: createStorage(),
+        openDatabase: async () => {
+          throw new Error("permission denied");
+        },
+      }),
+    ).rejects.toThrow("permission denied");
+
+    expect(getDesktopDatabaseStatus()).toMatchObject({
+      state: "degraded",
+      rowCount: 0,
+    });
+  });
+
   it("writes state through a serialized queue", async () => {
     const execute = vi.fn().mockResolvedValue({ rowsAffected: 1 });
     const database = { execute };
     const openDatabase = vi.fn().mockResolvedValue(database);
     await Promise.all([
-      persistDesktopState("first", '{"version":1,"value":1}', {
+      persistDesktopState("fuck-ddl:v1:first", '{"version":1,"value":1}', {
         openDatabase,
         now: () => "2026-07-11T00:00:00.000Z",
       }),
-      persistDesktopState("second", '{"version":1,"value":2}', {
+      persistDesktopState("fuck-ddl:v1:second", '{"version":1,"value":2}', {
         openDatabase,
         now: () => "2026-07-11T00:00:01.000Z",
       }),
     ]);
     expect(execute).toHaveBeenCalledTimes(2);
     expect(execute.mock.calls[0][1]).toEqual([
-      "first",
+      "fuck-ddl:v1:first",
       '{"version":1,"value":1}',
       "2026-07-11T00:00:00.000Z",
     ]);
+    expect(getDesktopDatabaseStatus()).toMatchObject({
+      state: "ready",
+      rowCount: 2,
+      lastWriteAt: "2026-07-11T00:00:01.000Z",
+    });
+  });
+
+  it("rejects non-business or malformed state before it reaches SQLite", async () => {
+    const openDatabase = vi.fn();
+
+    await expect(
+      persistDesktopState("fuck-ddl:auth", '{"version":1,"value":"secret"}', {
+        openDatabase,
+      }),
+    ).resolves.toBe(false);
+    await expect(
+      persistDesktopState("fuck-ddl:v1:tasks", "not-json", { openDatabase }),
+    ).resolves.toBe(false);
+
+    expect(openDatabase).not.toHaveBeenCalled();
   });
 });
