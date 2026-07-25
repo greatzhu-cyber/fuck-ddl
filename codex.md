@@ -13,10 +13,11 @@
 - 产品定位：Windows 优先的 DDL 工作记录器，核心闭环为任务收集、今日安排、专注计时、工作记录、完成归档和复盘。
 - 当前自动化：Prettier、ESLint、TypeScript、11 表 Schema 契约、领域 24/24、Web 24 个测试文件 152/152、桌面 Rust 33/33、Native Host 6/6、两套 Clippy、生产构建和 Edge 冒烟/构建全部通过。
 - P0 已恢复质量基线：修复 3 个过期 ZJU Desktop 测试契约，并统一完成前端与 Rust 格式化。
-- Git 基线：首个可恢复提交为 `f9ada8e`（`chore: establish validated local baseline`）。
+- Git 基线：首个可恢复提交为 `f9ada8e`（`chore: establish validated local baseline`）；0.3.0 候选源码提交为 `daad0374d04a62d9dba0943c20d0b256afe2553a`。
 - 桌面实机：已安装 0.2.0 的进程、动态桥、单实例、托盘、窗口唤醒和 JSON 自动备份通过冒烟。
 - 数据边界：当前标准候选继续使用 `%APPDATA%\com.fuckddl.desktop\fuck-ddl.db`；P4 SQLite 恢复测试全部使用内存数据库，不写入真实用户数据。
-- 当前产物：0.3.0 未签名 NSIS x64 候选已生成，大小 3,342,375 bytes，SHA256 `33727A7F9339F556A9ED3492511EBC28CCD5446845FE7BEB4BEE097D359362CE`；本轮未安装。
+- 当前产物：0.3.0 未签名 NSIS x64 候选已从 `daad0374d04a62d9dba0943c20d0b256afe2553a` 在干净工作区重建，大小 3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；本轮未安装。
+- 可复现性：候选来源已可追溯，原“工作区不可复现”阻塞已解决；尚未通过两次独立干净重建比较验证 NSIS 的逐字节确定性。
 
 - 授权边界：真实账号、云资源、OAuth、签名、公开发布、重装和系统网络设置仍需单独授权。
 
@@ -1117,3 +1118,15 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 可复现性：构建分支 `master`、HEAD `62d7d6d4a0717fea6d38ec350b7def231a237d5e`；工作区仍含未提交变更，因此本候选包含工作区内容，不能只由该 HEAD 重现。
 - 边界：未运行会安装软件并写注册表的 `scripts/finish-local-release.ps1`；未安装、升级或卸载 0.3.0，未停止当前安装版，未操作 Supabase/OAuth，未签名、上传或公开发布。
 - 后续门禁：形成审阅后的明确 Git 提交并从该提交重建，以及安装/升级/卸载与数据保留验收，均需用户另行明确授权。
+
+### P5A Git 收口完成（2026-07-25）
+
+状态：**当前项目变更已审阅并提交，0.3.0 已从明确源码提交重新构建；P5A Git 收口完成，未进入 P5B/P5C/P5D。**
+
+- 变更审阅：共核对 34 个实际文件，其中 12 个为新文件；敏感文件名与凭据模式扫描均为零命中。`App.jsx`、`app-persistence.js` 和 `sqlite-schema.js` 的 UTF-8 BOM 已移除，ZJU 注入脚本独立语法检查通过。
+- 源码提交：分支 `master`，提交 `daad0374d04a62d9dba0943c20d0b256afe2553a`（`feat: finalize validated local 0.3.0 candidate`）；提交后与构建后工作区均为空。
+- 构建门禁：领域 24/24、Web 152/152、桌面 Rust 33/33、Native Host 6/6、两套格式检查与 Clippy、Edge 冒烟/构建、Native Host release、Vite 生产构建和 Tauri NSIS 构建全部通过。
+- 最终安装器：`apps/desktop/src-tauri/target/release/bundle/nsis/Fuck DDL_0.3.0_x64-setup.exe`，3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；旁置 `.sha256` 已验证匹配，Authenticode 为 `NotSigned`。
+- 二进制核验：桌面 EXE SHA256 `BD09E624BE3AA040FB4F6C4FBD8E128EC62CAB0A841724855260EB0EAD04F80E`，FileVersion 与 ProductVersion 均为 `0.3.0`；Native Host SHA256 `4BBC2CCF1E922CE057AC89982883F00F75C170582E84B038B543D141E2B78669`。
+- 可复现性结论：原“工作区不可复现”阻塞已解决，候选可追溯到明确源码提交；本轮没有执行两次独立干净重建的逐字节比较，因此不宣称 NSIS 产物具备逐字节确定性。
+- 边界：未运行 `scripts/finish-local-release.ps1`；未安装、升级或卸载 0.3.0，未停止现有 0.2.0 安装版，未操作 Supabase/OAuth，未签名、上传或公开发布。

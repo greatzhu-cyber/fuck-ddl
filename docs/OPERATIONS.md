@@ -18,11 +18,11 @@
 
 - 便携文件：`apps/desktop/src-tauri/target/release/fuck-ddl.exe`。
 - P5A 本地候选：`apps/desktop/src-tauri/target/release/bundle/nsis/Fuck DDL_0.3.0_x64-setup.exe`；本轮只完成构建与核验，未安装。
-- 当前构建：Tauri 2 Release、未签名 NSIS x64 安装器；`0.3.0` 已锁定，形成审阅后的明确提交后仍需从该提交重建。
+- 当前构建：Tauri 2 Release、未签名 NSIS x64 安装器；`0.3.0` 已锁定，并已从审阅后的源码提交 `daad0374d04a62d9dba0943c20d0b256afe2553a` 在干净工作区重建。
 - 运行方式：优先安装后从开始菜单运行；本机安装路径为 `C:\Users\zhu\Fuck DDL`。
 - 重新构建：在已加载 MSVC 环境且 Rust/Cargo 可用的终端运行 `pnpm desktop:build`。
 - 当前数据以 WebView localStorage 为主，并由应用私有 SQLite 镜像和本机 JSON 自动备份保护；仍不视为云端多设备数据源。
-- 2026-07-25 P5A 0.3.0 候选 SHA256：`33727A7F9339F556A9ED3492511EBC28CCD5446845FE7BEB4BEE097D359362CE`；Authenticode 状态为 `NotSigned`。完整门禁与阻塞项见 `RELEASE_CHECKLIST.md`。
+- 2026-07-25 P5A 0.3.0 候选：3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；Authenticode 状态为 `NotSigned`。来源可追溯，但尚未验证 NSIS 跨次重建的逐字节确定性。完整门禁与阻塞项见 `RELEASE_CHECKLIST.md`。
 - 主窗口关闭会隐藏到托盘；使用托盘菜单“显示 Fuck DDL”恢复，选择“彻底退出”才停止进程。重复启动会唤醒现有窗口。
 - 通知插件已进入安装版；Windows 原生无声 Toast 已在安装版中完成可见性验收。
 
