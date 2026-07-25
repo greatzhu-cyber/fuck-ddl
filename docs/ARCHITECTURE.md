@@ -237,3 +237,34 @@ normalize(raw) -> CanonicalSourceRecord
 - [Supabase 数据安全](https://supabase.com/docs/guides/database/secure-data)
 - [Microsoft Edge Native Messaging](https://learn.microsoft.com/en-us/microsoft-edge/extensions-chromium/developer-guide/native-messaging)
 - [GitHub OAuth 应用](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps)
+
+## 14. P4 第一批落地记录（2026-07-24）
+
+- Web 应用的持久化状态声明已集中到 `apps/web/src/app-persistence.js`，页面组件不再直接承担所有状态键、校验器和迁移器的组装。
+- `apps/web/src/storage/sqlite-repository.js` 提供本地 repository 边界，统一状态读写、事务 schema、outbox 和同步游标访问。
+- SQLite schema 新增 `schema_migrations`、`sync_outbox`、`sync_cursors`；本批次尚未接入云端上传，不改变第三方来源读取逻辑。
+- 下一批治理重点是 outbox 的离线重放、退避重试、幂等确认、崩溃恢复和冲突策略，并为这些行为补充隔离测试。
+
+## 15. P4 第二批 outbox 治理（2026-07-24）
+
+- `apps/web/src/storage/outbox-policy.js` 集中定义指数退避、租约到期和过期判断，延迟上限为 15 分钟，默认租约为 30 秒。
+- `sqlite-repository.js` 增加领取待处理项、成功确认、失败退回待重试和过期 `in-flight` 回收；领取条件包含 `available_at`，确认条件包含 operation id 与租约状态，避免重复确认覆盖新状态。
+- 失败重试保留 payload 与版本，递增 attempts 并写入 `last_error`；失败状态可由上层显式标记，自动重试编排和最终失败策略仍待后续批次接入。
+- 本批次使用纯函数策略测试和 SQLite 调用隔离测试覆盖 11/11；未接入云端、不改变 PTA/ZJU 任务或成绩读取逻辑。
+
+## 16. P4 第三批离线重放与冲突边界（2026-07-24）
+
+- `outbox-replay.js` 提供离线重放编排：领取带租约的 operation，向发送器传递稳定 `operationId`，发送失败进入退避重试，确认失败保留 `in-flight` 交给恢复流程处理。
+- `sync-conflict-policy.js` 将同步状态分为本地变更、远端变更、无变化和同时变更；同时变更默认 `hold`，只有显式选择 `local-wins` 或 `remote-wins` 才允许应用一侧结果。
+- 本批次只提供本地可测试的编排与决策边界，未接入网络 transport、云端写入或自动冲突覆盖；不改变 PTA/ZJU 任务与成绩读取。
+- Web 回归测试现为 23 个测试文件、142/142。
+
+## 17. P4 第四批租约栅栏与恢复门禁（2026-07-25）
+
+- `operation_id` 现在作为不可变幂等键；重复入队使用 `ON CONFLICT DO NOTHING`，不会复活已发送或已终止的操作。
+- 领取时的 `updated_at` 同时作为租约栅栏。成功确认、失败退避和终止失败都必须携带该栅栏；租约过期后旧发送者无法确认后来重新领取的记录。
+- 崩溃回收直接比较每条记录的实际 `available_at`，不再用固定时长反推，支持不同租约时长。
+- 桌面 SQLite 边界新增单飞 `replayDesktopOutbox`，并发触发共享同一次重放，避免同进程重复发送。
+- 自动重试最多 8 次，随后进入 `failed`；重新提交必须生成新的 `operation_id`。
+- `sqlite-repository.integration.test.js` 使用 Node 24 内置真实内存 SQLite 验证：租约到期、旧租约拒绝、确认崩溃后幂等重放、重复 id 不复活、终止失败不再领取。
+- 本批不接云端、不改变 PTA/ZJU 任务或成绩读取。真实 transport 实现属于 P5，仍未授权。

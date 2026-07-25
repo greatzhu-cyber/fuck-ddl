@@ -1,6 +1,6 @@
 [package]
 name = "fuck-ddl"
-version = "0.2.0"
+version = "0.3.0"
 description = "Deadline-first work recorder for Windows"
 authors = ["zhu <1976114118@qq.com>"]
 edition = "2021"

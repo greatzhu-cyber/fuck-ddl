@@ -49,11 +49,14 @@ const records = [
 afterEach(cleanup);
 
 describe("GradebookView", () => {
-  it("separates published, unpublished, and missed outcomes", () => {
+  it("shows PTA by default and switches to all 学在浙大 grades", () => {
     render(<GradebookView records={records} />);
     expect(screen.getByText("73.0%")).toBeTruthy();
     expect(screen.getByText("73 / 100 分")).toBeTruthy();
     expect(screen.getByText("课程期末考试试卷")).toBeTruthy();
+    expect(screen.queryByText("第3章作业")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /学在浙大/ }));
     expect(screen.getByText("第3章作业")).toBeTruthy();
     expect(screen.getByText("补交通道")).toBeTruthy();
     expect(screen.getAllByText("错过 DDL").length).toBeGreaterThan(0);
@@ -61,9 +64,7 @@ describe("GradebookView", () => {
 
   it("filters by source and status without mutating the ledger", () => {
     render(<GradebookView records={records} />);
-    fireEvent.change(screen.getByLabelText("成绩来源"), {
-      target: { value: "学在浙大" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: /学在浙大/ }));
     fireEvent.change(screen.getByLabelText("成绩状态"), {
       target: { value: "unpublished" },
     });
@@ -109,6 +110,7 @@ describe("GradebookView", () => {
     fireEvent.click(screen.getByRole("button", { name: "更新成绩" }));
     expect(onSync).toHaveBeenCalledTimes(1);
 
+    fireEvent.click(screen.getByRole("button", { name: /学在浙大/ }));
     fireEvent.change(screen.getByLabelText("成绩查看起始日期"), {
       target: { value: "2026-07-01" },
     });
@@ -153,24 +155,83 @@ describe("GradebookView", () => {
       />,
     );
 
-    expect(screen.getByLabelText("更新 PTA 成绩")).toBeTruthy();
-    expect(screen.getByLabelText("学在浙大课程列表")).toBeTruthy();
-    expect(screen.getByLabelText("学在浙大学期")).toBeTruthy();
-    expect(screen.getByText("学期 / 课程")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /学在浙大/ }));
+    expect(screen.getByLabelText("更新时读取 PTA 成绩")).toBeTruthy();
+    const semesterSelect = screen.getByLabelText("学在浙大学期");
+    expect(semesterSelect).toBeTruthy();
+    expect(screen.getByText("未选择学期，课程列表暂不显示")).toBeTruthy();
+    fireEvent.change(semesterSelect, { target: { value: "2025-2026春夏" } });
+    expect(
+      screen.getByRole("tree", { name: "学在浙大学期课程目录" }),
+    ).toBeTruthy();
     // Header shortcut + in-tree button both trigger the same automation.
     const loadButtons = screen.getAllByRole("button", { name: "读取课程列表" });
     expect(loadButtons.length).toBeGreaterThanOrEqual(1);
     fireEvent.click(loadButtons[0]);
     expect(onLoadZjuCourses).toHaveBeenCalledTimes(1);
     // Default semester is newest (春夏); 微积分 is autumn-only.
-    expect(screen.getByLabelText("选择课程 大学物理（乙）I")).toBeTruthy();
-    expect(screen.queryByLabelText("选择课程 微积分（甲）I")).toBeNull();
-    fireEvent.click(screen.getByLabelText("选择课程 大学物理（乙）I"));
+    expect(screen.getByLabelText("更新课程 大学物理（乙）I")).toBeTruthy();
+    expect(screen.queryByLabelText("更新课程 微积分（甲）I")).toBeNull();
+    fireEvent.click(screen.getByLabelText("更新课程 大学物理（乙）I"));
     expect(onSyncSettingsChange).toHaveBeenCalledWith({
       sinceDate: "",
       maxItems: 100,
       includePta: true,
       zjuCourseIds: ["95870"],
     });
+  });
+
+  it("limits 学在浙大 viewing to the selected semester", () => {
+    const semesterRecords = [
+      {
+        id: "grade:学在浙大:current",
+        sourceName: "学在浙大",
+        sourceId: "current",
+        courseName: "当前学期课程",
+        title: "当前学期作业",
+        status: "published",
+        score: 90,
+        maxScore: 100,
+      },
+      {
+        id: "grade:学在浙大:old",
+        sourceName: "学在浙大",
+        sourceId: "old",
+        courseName: "上一学期课程",
+        title: "上一学期作业",
+        status: "published",
+        score: 80,
+        maxScore: 100,
+      },
+    ];
+    render(
+      <GradebookView
+        records={semesterRecords}
+        zjuCourses={[
+          {
+            courseId: "10001",
+            courseTitle: "当前学期课程",
+            semester: "2025-2026春夏",
+          },
+          {
+            courseId: "10002",
+            courseTitle: "上一学期课程",
+            semester: "2025-2026秋冬",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("未选择学期，课程列表暂不显示")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("学在浙大学期"), {
+      target: { value: "2025-2026春夏" },
+    });
+    expect(screen.getByText("当前学期作业")).toBeTruthy();
+    expect(screen.queryByText("上一学期作业")).toBeNull();
+    fireEvent.change(screen.getByLabelText("学在浙大学期"), {
+      target: { value: "2025-2026秋冬" },
+    });
+    expect(screen.getByText("上一学期作业")).toBeTruthy();
+    expect(screen.queryByText("当前学期作业")).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import {
   getDesktopDatabaseStatus,
   openDesktopDatabase,
   persistDesktopState,
+  replayDesktopOutbox,
   resetDesktopDatabaseForTests,
   restoreDesktopState,
 } from "./desktop-sqlite.js";
@@ -182,5 +183,29 @@ describe("desktop SQLite state mirror", () => {
     ).resolves.toBe(false);
 
     expect(openDatabase).not.toHaveBeenCalled();
+  });
+  it("runs only one desktop outbox replay at a time", async () => {
+    const execute = vi.fn().mockResolvedValue({ rowsAffected: 1 });
+    const select = vi.fn().mockResolvedValue([
+      {
+        operation_id: "op-1",
+        status: "pending",
+        attempts: 0,
+        updated_at: "2026-07-25T00:00:00.000Z",
+      },
+    ]);
+    const openDatabase = vi.fn().mockResolvedValue({ execute, select });
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const now = () => "2026-07-25T00:00:00.000Z";
+
+    const [first, second] = await Promise.all([
+      replayDesktopOutbox(send, { openDatabase, now }),
+      replayDesktopOutbox(send, { openDatabase, now }),
+    ]);
+
+    expect(first).toMatchObject({ claimed: 1, sent: 1 });
+    expect(second).toEqual(first);
+    expect(openDatabase).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledTimes(1);
   });
 });

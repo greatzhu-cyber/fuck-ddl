@@ -1,4 +1,4 @@
-﻿# Documentation
+# Documentation
 
 本目录保存产品和工程设计文档。当前执行状态以根目录 [codex.md](../codex.md) 为准。
 
@@ -9,6 +9,7 @@
 | `ARCHITECTURE.md`       | 组件边界、数据模型和安全设计     |
 | `OPERATIONS.md`         | 构建、安装、备份、来源和发布运维 |
 | `DELIVERY_PLAN.md`      | 原阶段计划和退出门禁             |
+| `RELEASE_CHECKLIST.md`  | P5A 本地候选、哈希和发布阻塞项   |
 | `GITHUB_OAUTH_SETUP.md` | 未来 OAuth 配置说明              |
 | `design`                | 视觉方案与设计证据               |
 

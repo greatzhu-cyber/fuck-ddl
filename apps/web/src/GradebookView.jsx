@@ -1,10 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  CaretDown,
-  CaretRight,
-  Exam,
-  WarningCircle,
-} from "@phosphor-icons/react";
+import { Exam, WarningCircle } from "@phosphor-icons/react";
 import {
   DEFAULT_GRADE_SYNC_SETTINGS,
   GRADE_STATUS,
@@ -81,14 +76,16 @@ export function GradebookView({
   onLoadZjuCourses = () => {},
   loadingZjuCourses = false,
 }) {
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState(() => {
+    if (records.some((record) => record.sourceName === SOURCE_PTA)) {
+      return SOURCE_PTA;
+    }
+    return SOURCE_ZJU;
+  });
   const [courseFilter, setCourseFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewSinceDate, setViewSinceDate] = useState("");
   const [viewLimit, setViewLimit] = useState("50");
-  // Always show source tree by default — users need PTA + 学在浙大→学期→课程.
-  const [showSyncScope, setShowSyncScope] = useState(true);
-  const [zjuBranchOpen, setZjuBranchOpen] = useState(true);
   const includePta = syncSettings.includePta !== false;
   const selectedZjuIds = useMemo(
     () =>
@@ -104,25 +101,37 @@ export function GradebookView({
     [zjuCourses],
   );
   const [selectedSemester, setSelectedSemester] = useState("");
-  const activeSemester = useMemo(() => {
-    if (selectedSemester && zjuSemesters.includes(selectedSemester)) {
-      return selectedSemester;
-    }
-    return zjuSemesters[0] || "";
-  }, [selectedSemester, zjuSemesters]);
+  const activeSemester = useMemo(
+    () =>
+      selectedSemester && zjuSemesters.includes(selectedSemester)
+        ? selectedSemester
+        : "",
+    [selectedSemester, zjuSemesters],
+  );
   const coursesInSemester = useMemo(
     () =>
       zjuCourses.filter(
         (course) =>
-          !activeSemester || (course.semester || "未知学期") === activeSemester,
+          activeSemester && (course.semester || "未知学期") === activeSemester,
       ),
     [activeSemester, zjuCourses],
   );
-  const courseOptions = useMemo(
+  const zjuViewCourses = useMemo(
     () =>
-      [
-        ...new Set(records.map((record) => record.courseName).filter(Boolean)),
-      ].sort((left, right) => left.localeCompare(right, "zh-CN")),
+      coursesInSemester
+        .map((course) => course.courseTitle)
+        .filter(Boolean)
+        .filter((courseName, index, list) => list.indexOf(courseName) === index)
+        .sort((left, right) => left.localeCompare(right, "zh-CN")),
+    [coursesInSemester],
+  );
+  const sourceCounts = useMemo(
+    () => ({
+      [SOURCE_PTA]: records.filter((record) => record.sourceName === SOURCE_PTA)
+        .length,
+      [SOURCE_ZJU]: records.filter((record) => record.sourceName === SOURCE_ZJU)
+        .length,
+    }),
     [records],
   );
 
@@ -131,6 +140,32 @@ export function GradebookView({
       ...syncSettings,
       ...patch,
     });
+  }
+
+  function selectGradeSource(source) {
+    setSourceFilter(source);
+    setCourseFilter("all");
+    setStatusFilter("all");
+    if (source === SOURCE_ZJU) {
+      setSelectedSemester("");
+    }
+  }
+
+  function selectZjuViewSemester(value) {
+    setSourceFilter(SOURCE_ZJU);
+    setSelectedSemester(value);
+    setCourseFilter("all");
+  }
+
+  function selectZjuCourse(course) {
+    setSourceFilter(SOURCE_ZJU);
+    setSelectedSemester(course.semester || "未知学期");
+    setCourseFilter(course.courseTitle);
+    if (!selectedZjuIds.has(String(course.courseId))) {
+      patchSyncSettings({
+        zjuCourseIds: [...selectedZjuIds, String(course.courseId)],
+      });
+    }
   }
 
   function toggleZjuCourse(courseId) {
@@ -167,7 +202,13 @@ export function GradebookView({
       sourceName: sourceFilter === "all" ? null : sourceFilter,
       courseName: courseFilter === "all" ? null : courseFilter,
       status: statusFilter === "all" ? null : statusFilter,
-    });
+    }).filter(
+      (record) =>
+        sourceFilter !== SOURCE_ZJU ||
+        courseFilter !== "all" ||
+        zjuCourses.length === 0 ||
+        zjuViewCourses.includes(record.courseName),
+    );
     const query = search.trim().toLowerCase();
     const sorted = selected
       .filter(
@@ -199,6 +240,8 @@ export function GradebookView({
     sourceFilter,
     statusFilter,
     viewLimit,
+    zjuCourses,
+    zjuViewCourses,
     viewSinceDate,
   ]);
   const summary = useMemo(() => summarizeGrades(filtered), [filtered]);
@@ -206,9 +249,13 @@ export function GradebookView({
     summary.scoreRate === null
       ? "—"
       : `${(summary.scoreRate * 100).toFixed(1)}%`;
+  const showSemesterPrompt =
+    sourceFilter === SOURCE_ZJU && zjuCourses.length > 0 && !activeSemester;
 
   return (
-    <section className="gradebook-view">
+    <section
+      className={`gradebook-view ${showSemesterPrompt ? "is-semester-prompt" : ""}`}
+    >
       <div className="section-heading gradebook-heading">
         <div>
           <p className="eyebrow">来源成绩 · 只读归档</p>
@@ -241,231 +288,192 @@ export function GradebookView({
         </div>
       </div>
 
-      <section className="grade-sync-scope" aria-label="成绩更新来源">
-        <button
-          type="button"
-          className="grade-sync-scope-toggle"
-          aria-expanded={showSyncScope}
-          onClick={() => setShowSyncScope((current) => !current)}
-        >
-          <span>更新成绩来源</span>
-          <strong>
-            {syncSummary}
-            {syncSettings.sinceDate ? ` · 自 ${syncSettings.sinceDate}` : ""} ·
-            最多 {syncSettings.maxItems} 项
-          </strong>
-        </button>
-        {showSyncScope && (
-          <div className="grade-sync-scope-body">
-            <div className="grade-sync-scope-controls">
-              <label>
-                <span>从这天开始</span>
-                <input
-                  aria-label="成绩更新起始日期"
-                  type="date"
-                  value={syncSettings.sinceDate}
-                  onChange={(event) =>
-                    patchSyncSettings({ sinceDate: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                <span>最多纳入</span>
-                <select
-                  aria-label="成绩更新条目数"
-                  value={syncSettings.maxItems}
-                  onChange={(event) =>
-                    patchSyncSettings({
-                      maxItems: Number(event.target.value),
-                    })
-                  }
-                >
-                  {[20, 50, 100, 200].map((limit) => (
-                    <option value={limit} key={limit}>
-                      {limit} 项
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+      <section className="grade-source-directory" aria-label="选择查看成绩">
+        <div className="grade-directory-heading">
+          <div>
+            <p className="eyebrow">成绩目录</p>
+            <h2>按平台找到课程</h2>
+          </div>
+          <span>{syncSummary}</span>
+        </div>
 
-            <div className="grade-source-tree" aria-label="成绩来源树">
-              <label className="grade-source-node">
+        <div className="grade-directory-columns">
+          <article
+            className={`grade-directory-panel grade-directory-pta ${sourceFilter === SOURCE_PTA ? "is-active" : ""}`}
+          >
+            <button
+              type="button"
+              className="grade-directory-root"
+              aria-pressed={sourceFilter === SOURCE_PTA}
+              onClick={() => selectGradeSource(SOURCE_PTA)}
+            >
+              <span className="grade-directory-monogram is-pta">PTA</span>
+              <span>
+                <strong>PTA</strong>
+                <small>点击查看全部 PTA 成绩</small>
+              </span>
+              <b>{sourceCounts[SOURCE_PTA]}</b>
+            </button>
+            <div className="grade-directory-pta-body">
+              <p>PTA 不再拆分课程目录，进入后直接汇总所有题集成绩。</p>
+              <label className="grade-directory-check">
                 <input
                   type="checkbox"
                   checked={includePta}
                   onChange={(event) =>
                     patchSyncSettings({ includePta: event.target.checked })
                   }
-                  aria-label="更新 PTA 成绩"
+                  aria-label="更新时读取 PTA 成绩"
                 />
-                <span className="grade-source-node-title">PTA</span>
-                <small>勾选后随「更新成绩」读取 PTA</small>
+                更新成绩时读取 PTA
               </label>
+            </div>
+          </article>
 
-              <div className="grade-source-branch">
-                <div className="grade-source-node grade-source-node-branch">
-                  <button
-                    type="button"
-                    className="grade-source-branch-toggle"
-                    aria-expanded={zjuBranchOpen}
-                    onClick={() => setZjuBranchOpen((current) => !current)}
-                    aria-label={
-                      zjuBranchOpen
-                        ? "折叠学在浙大课程列表"
-                        : "展开学在浙大课程列表"
-                    }
-                  >
-                    {zjuBranchOpen ? <CaretDown /> : <CaretRight />}
-                  </button>
-                  <span className="grade-source-node-title">学在浙大</span>
-                  <small>
-                    学期 → 课程（已导入 {zjuCourses.length} 门 · 已选{" "}
-                    {selectedZjuIds.size} 门）
-                  </small>
-                </div>
-
-                {zjuBranchOpen && (
-                  <div
-                    className="grade-zju-course-picker"
-                    aria-label="学在浙大课程列表"
-                  >
-                    <div className="grade-zju-course-picker-head">
-                      <span>学期 / 课程</span>
-                      <div className="grade-zju-course-picker-actions">
-                        <button
-                          type="button"
-                          className="primary-button grade-zju-import-button"
-                          onClick={onLoadZjuCourses}
-                          disabled={loadingZjuCourses || syncing}
-                          aria-label="读取并导入课程列表"
-                        >
-                          {loadingZjuCourses
-                            ? "正在自动读取写入…"
-                            : "读取课程列表"}
-                        </button>
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={selectAllZjuCourses}
-                          disabled={
-                            coursesInSemester.length === 0 ||
-                            syncing ||
-                            loadingZjuCourses
-                          }
-                        >
-                          全选本学期
-                        </button>
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={clearZjuCourses}
-                          disabled={selectedZjuIds.size === 0 || syncing}
-                        >
-                          清空
-                        </button>
-                      </div>
-                    </div>
-                    {zjuCourses.length === 0 ? (
-                      <p className="grade-zju-course-empty">
-                        尚未导入课程。点「读取课程列表」会自动翻页抓取学在浙大「我的课程」（含学期标签），写入本地后再：先选学期
-                        → 再勾课程。
-                      </p>
-                    ) : (
-                      <>
-                        <label className="grade-zju-semester-label">
-                          <span>学期</span>
-                          <select
-                            aria-label="学在浙大学期"
-                            value={activeSemester}
-                            onChange={(event) =>
-                              setSelectedSemester(event.target.value)
-                            }
-                          >
-                            {zjuSemesters.map((semester) => (
-                              <option value={semester} key={semester}>
-                                {semester}（
-                                {
-                                  zjuCourses.filter(
-                                    (course) =>
-                                      (course.semester || "未知学期") ===
-                                      semester,
-                                  ).length
-                                }{" "}
-                                门）
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <ul className="grade-zju-course-list">
-                          {coursesInSemester.map((course) => {
-                            const checked = selectedZjuIds.has(
-                              String(course.courseId),
-                            );
-                            return (
-                              <li key={course.courseId}>
-                                <label>
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() =>
-                                      toggleZjuCourse(course.courseId)
-                                    }
-                                    aria-label={`选择课程 ${course.courseTitle}`}
-                                  />
-                                  <span>{course.courseTitle}</span>
-                                </label>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </>
-                    )}
-                    <small>
-                      先选学期再勾课。已交+分数→直接入成绩；仅已交→未公布；未交已截止→错过
-                      DDL。
-                    </small>
-                  </div>
-                )}
+          <article
+            className={`grade-directory-panel grade-directory-zju ${sourceFilter === SOURCE_ZJU ? "is-active" : ""}`}
+          >
+            <div className="grade-directory-zju-head">
+              <button
+                type="button"
+                className="grade-directory-root"
+                aria-pressed={sourceFilter === SOURCE_ZJU}
+                onClick={() => selectGradeSource(SOURCE_ZJU)}
+              >
+                <span className="grade-directory-monogram is-zju">ZJU</span>
+                <span>
+                  <strong>学在浙大</strong>
+                  <small>学期 → 课程</small>
+                </span>
+                <b>{sourceCounts[SOURCE_ZJU]}</b>
+              </button>
+              <div className="grade-directory-zju-actions">
+                <span className="grade-connection-pill">
+                  <i />
+                  {zjuCourses.length > 0 ? "已连接" : "未读取"}
+                </span>
+                <button
+                  type="button"
+                  className="grade-directory-import"
+                  onClick={onLoadZjuCourses}
+                  disabled={loadingZjuCourses || syncing}
+                >
+                  {loadingZjuCourses ? "读取中…" : "读取课程"}
+                </button>
               </div>
             </div>
 
-            <p className="grade-sync-hint">
-              点右上角「更新成绩」时：按上方勾选分别跑 PTA /
-              学在浙大选中课程。至少勾选 PTA 或一门学在浙大课。
-            </p>
-          </div>
-        )}
-      </section>
+            {zjuCourses.length === 0 ? (
+              <div className="grade-directory-empty">
+                <span>还没有课程目录</span>
+                <small>读取后会按学期归档，不会与 PTA 混在一起。</small>
+              </div>
+            ) : (
+              <div className="grade-zju-directory-body">
+                <div className="grade-semester-control">
+                  <label>
+                    <span>学期</span>
+                    <select
+                      aria-label="学在浙大学期"
+                      value={activeSemester}
+                      onChange={(event) =>
+                        selectZjuViewSemester(event.target.value)
+                      }
+                    >
+                      <option value="">请选择学期</option>
+                      {zjuSemesters.map((semester) => (
+                        <option value={semester} key={semester}>
+                          {semester}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="grade-semester-actions">
+                    <button type="button" onClick={selectAllZjuCourses}>
+                      全选
+                    </button>
+                    <button type="button" onClick={clearZjuCourses}>
+                      清空
+                    </button>
+                  </div>
+                </div>
+                {activeSemester && (
+                  <ul
+                    role="tree"
+                    className="grade-course-tree"
+                    aria-label="学在浙大学期课程目录"
+                  >
+                    {coursesInSemester.map((course) => {
+                      const courseId = String(course.courseId);
+                      const checked = selectedZjuIds.has(courseId);
+                      const active =
+                        sourceFilter === SOURCE_ZJU &&
+                        courseFilter === course.courseTitle;
+                      return (
+                        <li
+                          key={courseId}
+                          className={active ? "is-active" : ""}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => selectZjuCourse(course)}
+                            aria-pressed={active}
+                          >
+                            <span>{course.courseTitle}</span>
+                            <small>{active ? "正在查看" : "查看成绩"}</small>
+                          </button>
+                          <label title="勾选后参与下一次成绩更新">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleZjuCourse(courseId)}
+                              aria-label={`更新课程 ${course.courseTitle}`}
+                            />
+                            <span>更新</span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+          </article>
+        </div>
 
+        <div className="grade-directory-footer">
+          <span>更新范围</span>
+          <label>
+            <span>从</span>
+            <input
+              aria-label="成绩更新起始日期"
+              type="date"
+              value={syncSettings.sinceDate}
+              onChange={(event) =>
+                patchSyncSettings({ sinceDate: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            <span>最多</span>
+            <select
+              aria-label="成绩更新条目数"
+              value={syncSettings.maxItems}
+              onChange={(event) =>
+                patchSyncSettings({ maxItems: Number(event.target.value) })
+              }
+            >
+              {[20, 50, 100, 200].map((limit) => (
+                <option value={limit} key={limit}>
+                  {limit} 项
+                </option>
+              ))}
+            </select>
+          </label>
+          <small>课程行用于查看；右侧“更新”勾选决定下一次读取哪些课程。</small>
+        </div>
+      </section>
       <div className="gradebook-filters" aria-label="成绩筛选">
-        <label>
-          <span>来源</span>
-          <select
-            aria-label="成绩来源"
-            value={sourceFilter}
-            onChange={(event) => setSourceFilter(event.target.value)}
-          >
-            <option value="all">全部来源</option>
-            <option value={SOURCE_PTA}>PTA</option>
-            <option value={SOURCE_ZJU}>学在浙大</option>
-          </select>
-        </label>
-        <label>
-          <span>课程</span>
-          <select
-            aria-label="成绩课程"
-            value={courseFilter}
-            onChange={(event) => setCourseFilter(event.target.value)}
-          >
-            <option value="all">全部课程</option>
-            {courseOptions.map((courseName) => (
-              <option value={courseName} key={courseName}>
-                {courseName}
-              </option>
-            ))}
-          </select>
-        </label>
         <label>
           <span>状态</span>
           <select
@@ -504,7 +512,13 @@ export function GradebookView({
         </label>
       </div>
 
-      {records.length === 0 ? (
+      {showSemesterPrompt ? (
+        <div className="gradebook-semester-empty">
+          <Exam weight="duotone" />
+          <h2>未选择学期，课程列表暂不显示</h2>
+          <p>请选择学在浙大的学期后查看课程列表</p>
+        </div>
+      ) : records.length === 0 ? (
         <div className="gradebook-empty">
           <Exam weight="duotone" />
           <h2>还没有成绩记录</h2>

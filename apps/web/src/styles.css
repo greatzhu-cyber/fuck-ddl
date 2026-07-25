@@ -1447,6 +1447,151 @@ textarea:focus-visible,
   font-size: 12px;
   line-height: 1.6;
 }
+.grade-source-view {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 15px;
+  border: 1px solid #d8e0f3;
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      circle at 92% 14%,
+      rgba(91, 113, 210, 0.12),
+      transparent 28%
+    ),
+    #fff;
+}
+.grade-source-view-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.grade-source-view-heading .eyebrow {
+  margin-bottom: 4px;
+}
+.grade-source-view-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+.grade-source-view-note {
+  color: var(--muted);
+  font-size: 10px;
+}
+.grade-source-view-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.grade-source-view-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 68px;
+  padding: 10px 12px;
+  border: 1px solid #dce3f5;
+  border-radius: 10px;
+  color: var(--ink);
+  background: #fbfcff;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+.grade-source-view-card:hover {
+  border-color: #a9b9ea;
+  background: #f7f9ff;
+  transform: translateY(-1px);
+}
+.grade-source-view-card.is-active {
+  border-color: var(--primary);
+  background: #f1f5ff;
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.grade-source-view-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  color: #fff;
+  font:
+    750 15px "Cascadia Mono",
+    monospace;
+}
+.grade-source-view-mark.is-pta {
+  background: #4263c9;
+}
+.grade-source-view-mark.is-zju {
+  background: #159b7d;
+}
+.grade-source-view-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.grade-source-view-copy strong {
+  font-size: 13px;
+}
+.grade-source-view-copy small,
+.grade-source-view-count {
+  color: var(--muted);
+  font-size: 10px;
+}
+.grade-source-view-count {
+  white-space: nowrap;
+}
+.grade-zju-view-picker {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed #c3d0f2;
+  border-radius: 9px;
+  background: #f9fbff;
+}
+.grade-zju-view-picker label {
+  display: grid;
+  gap: 5px;
+  min-width: 190px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.grade-zju-view-picker select {
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 12px;
+}
+.grade-zju-view-hint {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 10px;
+}
+.grade-zju-view-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.grade-zju-view-empty .secondary-button {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 11px;
+}
 .grade-sync-scope {
   position: relative;
   margin-bottom: 12px;
@@ -2336,6 +2481,396 @@ textarea:focus-visible,
   padding: 0;
 }
 
+.grade-source-directory {
+  margin-top: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: #f8faff;
+  overflow: hidden;
+  box-shadow: 0 14px 36px rgba(34, 54, 92, 0.07);
+}
+
+.grade-directory-heading {
+  min-height: 74px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid #dfe5f0;
+  background: linear-gradient(90deg, #f4f7fd 0 40%, #fbfcff 40% 100%);
+}
+
+.grade-directory-heading .eyebrow {
+  margin: 0 0 3px;
+}
+
+.grade-directory-heading h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.grade-directory-heading > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.grade-directory-columns {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.72fr) minmax(390px, 1.55fr);
+  min-height: 310px;
+}
+
+.grade-directory-panel {
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.grade-directory-panel.is-active {
+  box-shadow: inset 0 3px 0 var(--focus);
+}
+
+.grade-directory-pta {
+  border-right: 1px solid #dfe5f0;
+  background:
+    linear-gradient(145deg, rgba(45, 82, 184, 0.07), transparent 55%), #fbfcff;
+}
+
+.grade-directory-root {
+  width: 100%;
+  min-height: 92px;
+  padding: 18px 20px;
+  border: 0;
+  background: transparent;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.grade-directory-root:hover {
+  background: rgba(49, 94, 251, 0.045);
+}
+
+.grade-directory-root > span:nth-child(2) {
+  display: grid;
+  gap: 3px;
+}
+
+.grade-directory-root strong {
+  font-size: 18px;
+  letter-spacing: -0.015em;
+}
+
+.grade-directory-root small,
+.grade-directory-empty small,
+.grade-directory-footer small {
+  color: var(--muted);
+}
+
+.grade-directory-root b {
+  min-width: 34px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: #4f5b6d;
+  font-size: 12px;
+  text-align: center;
+}
+
+.grade-directory-monogram {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font:
+    700 12px/1 "Segoe UI Variable",
+    "Segoe UI",
+    sans-serif;
+  letter-spacing: 0.04em;
+  box-shadow: 0 8px 18px rgba(35, 65, 135, 0.17);
+}
+
+.grade-directory-monogram.is-pta {
+  background: #273f86;
+}
+
+.grade-directory-monogram.is-zju {
+  background: #156f9c;
+}
+
+.grade-directory-pta-body {
+  margin: 0 20px 20px;
+  padding: 18px;
+  border: 1px solid #e1e6f0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.grade-directory-pta-body p {
+  margin: 0 0 18px;
+  color: #526073;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.grade-directory-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334158;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.grade-directory-check input,
+.grade-course-tree input {
+  accent-color: var(--focus);
+}
+
+.grade-directory-zju-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.grade-directory-import {
+  margin-right: 18px;
+  padding: 8px 12px;
+  border: 1px solid #cfd7e6;
+  border-radius: 9px;
+  background: #fff;
+  color: #315078;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.grade-directory-import:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.grade-directory-empty {
+  margin: 22px;
+  min-height: 130px;
+  border: 1px dashed #cfd8e7;
+  border-radius: 12px;
+  display: grid;
+  place-content: center;
+  gap: 5px;
+  text-align: center;
+}
+
+.grade-semester-tree {
+  padding: 10px 14px 18px;
+}
+
+.grade-semester-branch + .grade-semester-branch {
+  border-top: 1px solid #edf0f5;
+}
+
+.grade-semester-row {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.grade-semester-row > button:first-child {
+  min-width: 0;
+  flex: 1;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.grade-semester-row > button:first-child svg {
+  width: 16px;
+  height: 16px;
+  color: #71809a;
+}
+
+.grade-semester-row > button:first-child span {
+  font-weight: 650;
+}
+
+.grade-semester-row > button:first-child small {
+  color: var(--muted);
+}
+
+.grade-semester-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.grade-semester-actions button {
+  padding: 5px 7px;
+  border: 0;
+  background: transparent;
+  color: #526b94;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.grade-course-tree {
+  margin: 0 0 9px 25px;
+  padding: 0 0 0 14px;
+  border-left: 1px solid #d8e0ed;
+  list-style: none;
+}
+
+.grade-course-tree li {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 9px;
+}
+
+.grade-course-tree li:hover,
+.grade-course-tree li.is-active {
+  background: #edf3ff;
+}
+
+.grade-course-tree li.is-active {
+  box-shadow: inset 3px 0 0 var(--focus);
+}
+
+.grade-course-tree li > button {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.grade-course-tree li > button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.grade-course-tree li > button small {
+  color: #7d899a;
+  font-size: 10px;
+}
+
+.grade-course-tree li > label {
+  padding: 6px 10px 6px 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #68768a;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.grade-directory-footer {
+  min-height: 58px;
+  padding: 10px 18px;
+  border-top: 1px solid #dfe5f0;
+  background: #f5f7fb;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.grade-directory-footer > span {
+  color: #445268;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.grade-directory-footer label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.grade-directory-footer input,
+.grade-directory-footer select {
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.grade-directory-footer small {
+  margin-left: auto;
+  text-align: right;
+}
+
+@media (max-width: 850px) {
+  .grade-directory-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .grade-directory-pta {
+    border-right: 0;
+    border-bottom: 1px solid #dfe5f0;
+  }
+
+  .grade-directory-footer {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .grade-directory-footer small {
+    width: 100%;
+    margin-left: 0;
+    text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  .grade-directory-heading,
+  .grade-directory-zju-head,
+  .grade-directory-footer {
+    align-items: stretch;
+  }
+
+  .grade-directory-heading {
+    display: grid;
+  }
+
+  .grade-directory-zju-head {
+    grid-template-columns: 1fr;
+  }
+
+  .grade-directory-import {
+    margin: 0 18px 14px;
+  }
+
+  .grade-directory-root {
+    padding: 16px;
+  }
+
+  .grade-course-tree {
+    margin-left: 8px;
+  }
+}
 @media (max-width: 1180px) {
   :root {
     --rail-width: 230px;
@@ -2449,6 +2984,30 @@ textarea:focus-visible,
   }
   .gradebook-heading {
     align-items: start;
+  }
+  .grade-source-view-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .grade-source-view-cards {
+    grid-template-columns: 1fr;
+  }
+  .grade-source-view-card {
+    min-height: 62px;
+  }
+  .grade-zju-view-picker {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .grade-zju-view-picker label {
+    min-width: 0;
+  }
+  .grade-zju-view-hint {
+    margin-left: 0;
+  }
+  .grade-zju-view-empty {
+    align-items: stretch;
+    flex-direction: column;
   }
   .gradebook-filters {
     display: grid;
@@ -2624,4 +3183,598 @@ textarea:focus-visible,
     transition-duration: 0.001ms !important;
     animation-duration: 0.001ms !important;
   }
+}
+
+/* Gradebook workbench: compact source cards with independent scrolling. */
+.gradebook-view {
+  width: 100%;
+  max-width: none;
+  min-height: calc(100vh - 116px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gradebook-heading {
+  margin: 0;
+  align-items: center;
+  padding: 2px 0 4px;
+}
+.gradebook-heading h1 {
+  font-size: 24px;
+  letter-spacing: -0.04em;
+}
+.gradebook-intro {
+  max-width: 520px;
+  margin-top: 4px;
+  font-size: 11px;
+}
+.gradebook-heading .section-heading-actions {
+  align-items: center;
+}
+.gradebook-heading .result-count {
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.grade-source-directory {
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.grade-directory-heading {
+  display: none;
+}
+.grade-directory-columns {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.82fr) minmax(360px, 1.45fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.grade-directory-panel {
+  min-width: 0;
+  min-height: 210px;
+  overflow: hidden;
+  border: 1px solid #e0e5ef;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #fff 0%, #fbfcff 100%);
+  box-shadow: 0 8px 20px rgba(35, 53, 88, 0.05);
+}
+.grade-directory-panel.is-active {
+  border-color: #376bff;
+  box-shadow:
+    0 0 0 1px rgba(55, 107, 255, 0.18),
+    0 10px 24px rgba(55, 107, 255, 0.08);
+}
+.grade-directory-root {
+  min-height: 82px;
+  padding: 16px 18px;
+}
+.grade-directory-monogram {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+}
+.grade-directory-root strong {
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+.grade-directory-root small {
+  margin-top: 4px;
+  font-size: 11px;
+}
+.grade-directory-root b {
+  min-width: 34px;
+  border-color: #e1e6ef;
+  background: #fff;
+  font-size: 12px;
+}
+.grade-directory-pta-body {
+  min-height: 111px;
+  margin: 0 16px 16px;
+  padding: 14px 15px;
+  border-color: #e5e9f1;
+  background: rgba(255, 255, 255, 0.72);
+}
+.grade-directory-pta-body p {
+  margin-bottom: 14px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.grade-directory-zju-head {
+  min-height: 82px;
+}
+.grade-directory-import {
+  margin-right: 16px;
+  border-color: #d3dcf0;
+  color: #2d5797;
+}
+.grade-zju-directory-body {
+  display: grid;
+  gap: 8px;
+  padding: 10px 16px 14px;
+}
+.grade-semester-control {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+.grade-semester-control label {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+.grade-semester-control select {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #cbd7ef;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 12px;
+}
+.grade-semester-control .grade-semester-actions {
+  flex: 0 0 auto;
+  padding-bottom: 1px;
+}
+.grade-semester-actions {
+  display: flex;
+  gap: 3px;
+}
+.grade-semester-actions button {
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid #e0e6f1;
+  border-radius: 6px;
+  background: #fff;
+  color: #526b94;
+  font-size: 10px;
+}
+.grade-course-tree {
+  max-height: 98px;
+  margin: 0;
+  padding: 0 2px;
+  overflow: auto;
+  border: 0;
+}
+.grade-course-tree li {
+  min-height: 34px;
+}
+.grade-course-tree li > button {
+  padding: 6px 8px;
+}
+.grade-course-tree li > button span {
+  font-size: 12px;
+}
+.grade-course-tree li > button small {
+  display: none;
+}
+.grade-course-tree li > label {
+  padding: 4px 6px 4px 4px;
+  font-size: 10px;
+}
+.grade-directory-footer {
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 7px 12px;
+  border: 1px solid #e2e7f0;
+  border-radius: 10px;
+  background: #f8faff;
+}
+.grade-directory-footer input,
+.grade-directory-footer select {
+  min-height: 30px;
+  border-radius: 7px;
+}
+.grade-directory-footer small {
+  font-size: 10px;
+}
+.gradebook-filters {
+  justify-content: flex-end;
+  margin: 0;
+}
+.gradebook-filters label {
+  min-height: 32px;
+  border-radius: 7px;
+  background: #fff;
+}
+.gradebook-filters select,
+.gradebook-filters input {
+  height: 26px;
+  font-size: 11px;
+}
+.grade-scoreboard {
+  min-height: 128px;
+  margin: 0;
+  border-radius: 14px;
+  border-color: #e0e5ef;
+  box-shadow: 0 8px 20px rgba(35, 53, 88, 0.04);
+}
+.grade-rate {
+  padding: 18px 22px;
+  background: linear-gradient(150deg, #263f94, #2f68dc);
+}
+.grade-rate > strong {
+  margin: 8px 0 5px;
+  font-size: 32px;
+}
+.grade-band-panel {
+  padding: 16px 20px;
+}
+.grade-band {
+  height: 42px;
+}
+.grade-ledger {
+  min-width: 0;
+  max-height: clamp(260px, 34vh, 440px);
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: #fff;
+}
+.grade-ledger-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fbfcff;
+}
+.grade-entry {
+  min-height: 70px;
+  padding: 10px 12px;
+}
+.grade-entry::before {
+  inset-block: 14px;
+}
+.grade-entry-score strong {
+  font-size: 21px;
+}
+.grade-entry-copy > strong {
+  font-size: 13px;
+}
+.gradebook-empty {
+  flex: 1;
+  min-height: 320px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 34%, #f2f6ff, #fff 55%);
+}
+.gradebook-filter-empty {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+@media (max-width: 900px) {
+  .grade-directory-columns {
+    grid-template-columns: 1fr;
+  }
+  .grade-directory-panel {
+    min-height: 0;
+  }
+  .grade-course-tree {
+    max-height: 160px;
+  }
+}
+@media (max-width: 560px) {
+  .gradebook-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .gradebook-heading .section-heading-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .gradebook-heading .section-heading-actions .result-count {
+    grid-column: 1 / -1;
+  }
+  .grade-semester-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .grade-semester-control .grade-semester-actions {
+    justify-content: flex-end;
+  }
+  .grade-directory-footer {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .grade-directory-footer small {
+    width: 100%;
+    margin-left: 0;
+    text-align: left;
+  }
+}
+
+/* Reference-aligned gradebook workbench */
+.gradebook-view {
+  position: relative;
+  min-height: calc(100vh - 118px);
+  gap: 10px;
+  max-width: none;
+}
+.gradebook-heading {
+  min-height: 34px;
+  margin: 0;
+  align-items: center;
+}
+.gradebook-heading > div:first-child {
+  display: none;
+}
+.gradebook-heading .section-heading-actions {
+  width: 100%;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.gradebook-heading .result-count {
+  margin-right: auto;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.grade-source-directory {
+  display: contents;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.grade-directory-heading {
+  display: none;
+}
+.grade-directory-columns {
+  width: 100%;
+  grid-template-columns: minmax(260px, 0.86fr) minmax(430px, 1.48fr);
+  gap: 10px;
+  align-items: stretch;
+}
+.grade-directory-panel {
+  min-height: 248px;
+  border: 1px solid #e2e7f1;
+  border-radius: 14px;
+  background: linear-gradient(150deg, #fff 0%, #fbfcff 100%);
+  box-shadow: 0 5px 16px rgba(38, 62, 111, 0.045);
+}
+.grade-directory-panel.is-active {
+  border-color: #2f64ff;
+  box-shadow:
+    0 0 0 1px rgba(47, 100, 255, 0.12),
+    0 8px 20px rgba(47, 100, 255, 0.07);
+}
+.grade-directory-root {
+  min-height: 82px;
+  padding: 15px 18px;
+}
+.grade-directory-root strong {
+  font-size: 17px;
+}
+.grade-directory-root small {
+  margin-top: 4px;
+  font-size: 11px;
+}
+.grade-directory-monogram {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+}
+.grade-directory-pta-body {
+  min-height: 137px;
+  margin: 0 16px 16px;
+  padding: 15px 16px;
+  border-color: #e3e8f1;
+  background: rgba(255, 255, 255, 0.78);
+}
+.grade-directory-pta-body p {
+  margin-bottom: 18px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.grade-directory-zju-head {
+  min-height: 82px;
+}
+.grade-directory-zju-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 16px;
+}
+.grade-connection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #d9e1f2;
+  border-radius: 8px;
+  color: #52647e;
+  background: #fff;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.grade-connection-pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #75c94f;
+  box-shadow: 0 0 0 3px #eff9eb;
+}
+.grade-directory-import {
+  margin: 0;
+  min-height: 32px;
+  padding: 0 11px;
+  border-color: #d2dced;
+  font-size: 11px;
+}
+.grade-zju-directory-body {
+  min-height: 144px;
+  padding: 13px 18px 17px;
+  border-top: 1px solid #edf0f5;
+}
+.grade-semester-control {
+  display: block;
+}
+.grade-semester-control label {
+  gap: 6px;
+  font-size: 11px;
+  color: #26344b;
+}
+.grade-semester-control select {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #9bb7ff;
+  border-radius: 8px;
+  color: #53627b;
+  background: #fff;
+  font-size: 12px;
+  box-shadow: 0 0 0 2px rgba(47, 100, 255, 0.04);
+}
+.grade-semester-control .grade-semester-actions {
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.grade-semester-actions button {
+  min-height: 26px;
+  border-color: #e0e6f0;
+  font-size: 10px;
+}
+.grade-semester-actions button:disabled {
+  display: none;
+}
+.grade-course-tree {
+  max-height: 168px;
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  overflow: auto;
+}
+.grade-course-tree li {
+  min-height: 34px;
+}
+.grade-course-tree li > button {
+  padding: 6px 8px;
+}
+.grade-course-tree li > button span {
+  font-size: 12px;
+}
+.grade-course-tree li > button small {
+  display: none;
+}
+.grade-course-tree li > label {
+  padding: 4px 7px 4px 4px;
+  font-size: 10px;
+}
+.grade-directory-empty {
+  min-height: 143px;
+  margin: 13px 18px 17px;
+  border-color: #d9e1ef;
+  background: #fff;
+}
+.grade-directory-footer {
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid #e1e7f0;
+  border-radius: 10px;
+  background: #f8faff;
+}
+.grade-directory-footer small {
+  font-size: 10px;
+}
+.gradebook-filters {
+  justify-content: flex-end;
+  margin: 0;
+}
+.gradebook-view.is-semester-prompt .gradebook-filters {
+  display: none;
+}
+.gradebook-view.is-semester-prompt .grade-directory-columns {
+  order: 1;
+}
+.gradebook-view.is-semester-prompt .gradebook-semester-empty {
+  order: 2;
+}
+.gradebook-view.is-semester-prompt .grade-directory-footer {
+  order: 3;
+}
+.gradebook-semester-empty {
+  width: 100%;
+  min-height: clamp(330px, 48vh, 560px);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 28px;
+  border: 1px solid #edf0f6;
+  border-radius: 14px;
+  color: var(--muted);
+  background:
+    radial-gradient(
+      circle at 50% 38%,
+      rgba(225, 235, 255, 0.76),
+      transparent 30%
+    ),
+    #fff;
+  text-align: center;
+}
+.gradebook-semester-empty > svg {
+  width: 82px;
+  height: 82px;
+  padding: 19px;
+  border-radius: 24px;
+  color: #7299ed;
+  background: #f0f5ff;
+}
+.gradebook-semester-empty h2 {
+  margin: 20px 0 7px;
+  color: #18243a;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+.gradebook-semester-empty p {
+  margin: 0;
+  color: #8a94a5;
+  font-size: 12px;
+}
+@media (max-width: 900px) {
+  .grade-directory-columns {
+    grid-template-columns: 1fr;
+  }
+  .grade-directory-panel {
+    min-height: 0;
+  }
+  .gradebook-semester-empty {
+    min-height: 300px;
+  }
+}
+@media (max-width: 560px) {
+  .gradebook-heading .section-heading-actions {
+    justify-content: stretch;
+  }
+  .gradebook-heading .section-heading-actions .result-count {
+    display: none;
+  }
+  .grade-directory-zju-actions {
+    margin-right: 10px;
+  }
+  .grade-connection-pill {
+    display: none;
+  }
+  .grade-directory-footer {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .grade-directory-footer small {
+    width: 100%;
+    margin-left: 0;
+    text-align: left;
+  }
+}
+.gradebook-view.is-semester-prompt .grade-semester-actions {
+  display: none;
 }

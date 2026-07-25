@@ -41,6 +41,10 @@ fn zju_sync_mode(raw: Option<&str>) -> &'static str {
     }
 }
 
+fn grade_course_url(course_id: &str) -> String {
+    format!("https://courses.zju.edu.cn/course/{course_id}/score#/")
+}
+
 fn sanitized_course_selection(course: &ZjuCourseSelection) -> Option<ZjuCourseSelection> {
     let course_id = course.course_id.trim();
     let course_title = course.course_title.trim();
@@ -87,13 +91,7 @@ fn zju_sync_url(options: Option<&ZjuSyncOptions>) -> Result<String, String> {
             .filter_map(sanitized_course_selection)
             .collect::<Vec<_>>();
         if let Some(first) = courses.first() {
-            let url = first.course_url.clone().unwrap_or_else(|| {
-                format!(
-                    "https://courses.zju.edu.cn/course/{}/content",
-                    first.course_id
-                )
-            });
-            return Ok(url);
+            return Ok(grade_course_url(&first.course_id));
         }
     }
     let mut url = Url::parse(ZJU_COURSES_URL).map_err(|_| "zju-url-invalid".to_string())?;
@@ -110,17 +108,26 @@ const EXTRACT_SCRIPT: &str = r#"
   if (window.top !== window) return;
   if (location.origin !== 'https://courses.zju.edu.cn') return;
 
-  const QUEUE_KEY = 'fuckddl:zju:queue';
-  const RESULTS_KEY = 'fuckddl:zju:results';
-  const INDEX_KEY = 'fuckddl:zju:index';
-  const ACTIVITY_QUEUE_KEY = 'fuckddl:zju:activity-queue';
-  const ACTIVITY_INDEX_KEY = 'fuckddl:zju:activity-index';
+  const TASK_QUEUE_KEY = 'fuckddl:zju:tasks:queue';
+  const TASK_RESULTS_KEY = 'fuckddl:zju:tasks:results';
+  const TASK_INDEX_KEY = 'fuckddl:zju:tasks:index';
+  const TASK_ACTIVITY_QUEUE_KEY = 'fuckddl:zju:tasks:activity-queue';
+  const TASK_ACTIVITY_INDEX_KEY = 'fuckddl:zju:tasks:activity-index';
+  const TASK_SCAN_STATS_KEY = 'fuckddl:zju:tasks:scan-stats';
+  const TASK_CATALOG_ACCUM_KEY = 'fuckddl:zju:tasks:catalog-accum';
+  const TASK_CATALOG_PAGE_KEY = 'fuckddl:zju:tasks:catalog-page';
+  const TASK_CATALOG_WAIT_KEY = 'fuckddl:zju:tasks:catalog-wait';
+  const TASK_CATALOG_FP_KEY = 'fuckddl:zju:tasks:catalog-fp';
+  const GRADE_QUEUE_KEY = 'fuckddl:zju:grades:queue';
+  const GRADE_RESULTS_KEY = 'fuckddl:zju:grades:results';
+  const GRADE_INDEX_KEY = 'fuckddl:zju:grades:index';
   const MODE_KEY = 'fuckddl:zju:mode';
   const COURSE_SEED_KEY = 'fuckddl:zju:course-seed';
   const COURSES_ACCUM_KEY = 'fuckddl:zju:courses-accum';
   const COURSES_PAGE_KEY = 'fuckddl:zju:courses-page';
   // Keep crawls bounded to avoid WebView2 OOM / long hangs.
   const MAX_COURSES = 20;
+  const MAX_TASK_COURSES = 120;
   const MAX_CATALOG_COURSES = 120;
   const MAX_CATALOG_PAGES = 15;
   // Grades must never open homework detail pages.
@@ -137,6 +144,15 @@ const EXTRACT_SCRIPT: &str = r#"
     if (mode === 'grades' || mode === 'courses') return mode;
     return 'tasks';
   };
+  const taskCourseUrl = (course) => {
+    const id = String(course?.courseId || '').trim();
+    return id ? `${location.origin}/course/${id}/homework` : '';
+  };
+  const gradeCourseUrl = (course) => {
+    const id = String(course?.courseId || '').trim();
+    return id ? `${location.origin}/course/${id}/score#/` : '';
+  };
+  const isScoreRoute = () => /\/score(?:\/|$)/.test(location.pathname);
   // Serialize ALL top-level location.href writes. Progress uses a cancelled
   // fuckddl-sync navigation; if it races with a real course hop, WebView2
   // keeps the old page while INDEX already advanced → task crawl freezes
@@ -210,12 +226,29 @@ const EXTRACT_SCRIPT: &str = r#"
     // overwrite the final payload navigation.
     enqueueHref(`fuckddl-sync://${host}?payload=${encoded}`);
   };
-  const clearScan = () => {
-    sessionStorage.removeItem(QUEUE_KEY);
-    sessionStorage.removeItem(RESULTS_KEY);
-    sessionStorage.removeItem(INDEX_KEY);
-    sessionStorage.removeItem(ACTIVITY_QUEUE_KEY);
-    sessionStorage.removeItem(ACTIVITY_INDEX_KEY);
+  const clearTaskScan = () => {
+    sessionStorage.removeItem(TASK_QUEUE_KEY);
+    sessionStorage.removeItem(TASK_RESULTS_KEY);
+    sessionStorage.removeItem(TASK_INDEX_KEY);
+    sessionStorage.removeItem(TASK_ACTIVITY_QUEUE_KEY);
+    sessionStorage.removeItem(TASK_ACTIVITY_INDEX_KEY);
+    sessionStorage.removeItem(TASK_SCAN_STATS_KEY);
+    sessionStorage.removeItem(TASK_CATALOG_ACCUM_KEY);
+    sessionStorage.removeItem(TASK_CATALOG_PAGE_KEY);
+    sessionStorage.removeItem(TASK_CATALOG_WAIT_KEY);
+    sessionStorage.removeItem(TASK_CATALOG_FP_KEY);
+  };
+  const clearGradeScan = () => {
+    sessionStorage.removeItem(GRADE_QUEUE_KEY);
+    sessionStorage.removeItem(GRADE_RESULTS_KEY);
+    sessionStorage.removeItem(GRADE_INDEX_KEY);
+    try {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith('fuckddl:zju:grades:')) sessionStorage.removeItem(key);
+      });
+    } catch (_) {}
+  };
+  const clearCatalogScan = () => {
     sessionStorage.removeItem(MODE_KEY);
     sessionStorage.removeItem(COURSE_SEED_KEY);
     sessionStorage.removeItem(COURSES_ACCUM_KEY);
@@ -226,35 +259,53 @@ const EXTRACT_SCRIPT: &str = r#"
     sessionStorage.removeItem('fuckddl:zju:courses-method');
     sessionStorage.removeItem('fuckddl:zju:courses-size');
   };
+  const clearScan = () => {
+    clearTaskScan();
+    clearGradeScan();
+    clearCatalogScan();
+    [
+      'fuckddl:zju:queue',
+      'fuckddl:zju:results',
+      'fuckddl:zju:index',
+      'fuckddl:zju:activity-queue',
+      'fuckddl:zju:activity-index'
+    ].forEach((key) => sessionStorage.removeItem(key));
+  };
   const fail = () => {
     clearScan();
     signal('zju-extract-failed');
   };
-  const finish = (results) => {
-    const mode = readMode();
+  const finishTasks = (results) => {
+    const queue = readJson(TASK_QUEUE_KEY, []);
+    const stats = readJson(TASK_SCAN_STATS_KEY, { confirmed: 0, uncertain: 0 });
+    if (
+      queue.length > 0 &&
+      (Number(stats.uncertain || 0) > 0 ||
+        ((results || []).length === 0 && Number(stats.confirmed || 0) === 0))
+    ) {
+      progress(
+        `任务：存在未形成可确认快照的课程（确认${stats.confirmed || 0}/不确定${stats.uncertain || 0}），保留已有任务并报告读取失败`
+      );
+      clearScan();
+      signal('zju-extract-failed');
+      return;
+    }
     clearScan();
-    if (mode === 'tasks') {
-      // Drop grade fields so task sync never writes the grade ledger.
-      signal('zju', (results || []).map((item) => {
-        const { gradeStatus, score, maxScore, ...taskFields } = item || {};
-        return taskFields;
-      }));
-      return;
-    }
-    if (mode === 'courses') {
-      signal('zju-courses', results || []);
-      return;
-    }
-    // Grades: strip activity detail links. Invalid activityUrl used to make the
-    // whole payload fail bridge validation → frontend hung with no event.
     signal('zju', (results || []).map((item) => {
-      const {
-        activityId,
-        activityUrl,
-        ...rest
-      } = item || {};
+      const { gradeStatus, score, maxScore, ...taskFields } = item || {};
+      return taskFields;
+    }));
+  };
+  const finishGrades = (results) => {
+    clearScan();
+    signal('zju', (results || []).map((item) => {
+      const { activityId, activityUrl, ...rest } = item || {};
       return rest;
     }));
+  };
+  const finishCourses = (results) => {
+    clearScan();
+    signal('zju-courses', results || []);
   };
   const afterDomReady = (callback) => {
     if (document.readyState === 'loading') {
@@ -733,43 +784,41 @@ const EXTRACT_SCRIPT: &str = r#"
     return 'hard-reload';
   };
 
-  const catalogPageUrl = (pageNum) => {
+  const catalogPageUrl = (pageNum, mode = readMode()) => {
     const base = `${location.origin}/user/courses`;
-    // Try both query + hash pageIndex (学在浙大 SPA is inconsistent across versions).
-    return `${base}?fuckddl-sync=courses&pageIndex=${pageNum}&page=${pageNum}&_t=${Date.now()}#/?pageIndex=${pageNum}`;
+    // Keep task and course-catalog navigation in their own mode across hard reloads.
+    const syncMode = mode === 'tasks' ? 'tasks' : 'courses';
+    return `${base}?fuckddl-sync=${syncMode}&pageIndex=${pageNum}&page=${pageNum}&_t=${Date.now()}#/?pageIndex=${pageNum}`;
+  };  const startTaskQueue = (courses) => {
+    clearTaskScan();
+    sessionStorage.setItem(TASK_QUEUE_KEY, JSON.stringify(courses));
+    sessionStorage.setItem(TASK_RESULTS_KEY, '[]');
+    sessionStorage.setItem(TASK_INDEX_KEY, '0');
+    sessionStorage.setItem(TASK_ACTIVITY_QUEUE_KEY, '[]');
+    sessionStorage.setItem(TASK_ACTIVITY_INDEX_KEY, '0');
+    sessionStorage.setItem(TASK_SCAN_STATS_KEY, JSON.stringify({ confirmed: 0, uncertain: 0 }));
+    if (courses.length === 0) return finishTasks([]);
+    go(taskCourseUrl(courses[0]));
   };
-  const startCourseQueue = (courses) => {
-    sessionStorage.setItem(QUEUE_KEY, JSON.stringify(courses));
-    sessionStorage.setItem(RESULTS_KEY, '[]');
-    sessionStorage.setItem(INDEX_KEY, '0');
-    sessionStorage.setItem(ACTIVITY_QUEUE_KEY, '[]');
-    sessionStorage.setItem(ACTIVITY_INDEX_KEY, '0');
-    // Clear grade scroll state so modes never leak into each other.
-    try {
-      Object.keys(sessionStorage).forEach((k) => {
-        if (k.startsWith('fuckddl:zju:grade-')) sessionStorage.removeItem(k);
-      });
-    } catch (_) {}
-    if (courses.length === 0) {
-      finish([]);
-      return;
-    }
-    const first = courses[0];
-    const url = first.courseUrl || `${location.origin}/course/${first.courseId}/content`;
-    go(url);
-  };
-  const scanCourses = () => {
+  const startGradeQueue = (courses) => {
+    clearGradeScan();
+    sessionStorage.setItem(GRADE_QUEUE_KEY, JSON.stringify(courses));
+    sessionStorage.setItem(GRADE_RESULTS_KEY, '[]');
+    sessionStorage.setItem(GRADE_INDEX_KEY, '0');
+    if (courses.length === 0) return finishGrades([]);
+    go(gradeCourseUrl(courses[0]));
+  };  const scanCourses = () => {
     const mode = readMode();
     // Grades: only crawl user-selected courses seeded by the desktop bridge.
     if (mode === 'grades') {
-      const existing = readJson(QUEUE_KEY, []);
-      const idx = sessionStorage.getItem(INDEX_KEY);
+      const existing = readJson(GRADE_QUEUE_KEY, []);
+      const idx = sessionStorage.getItem(GRADE_INDEX_KEY);
       // If mid-crawl we accidentally landed on 课程列表, do NOT reset — go back to current course.
-      if (existing.length > 0 && idx !== null && sessionStorage.getItem(RESULTS_KEY) !== null) {
+      if (existing.length > 0 && idx !== null && sessionStorage.getItem(GRADE_RESULTS_KEY) !== null) {
         const course = existing[Number(idx) || 0];
         if (course && (course.courseUrl || course.courseId)) {
           progress(`成绩：误入列表页，返回当前课 ${course.courseTitle || course.courseId}`);
-          go(course.courseUrl || `${location.origin}/course/${course.courseId}/content`);
+          go(gradeCourseUrl(course));
           return;
         }
       }
@@ -781,7 +830,7 @@ const EXTRACT_SCRIPT: &str = r#"
         )
         .map((item) => ({
           ...item,
-          courseUrl: item.courseUrl || `${location.origin}/course/${item.courseId}/content`
+          courseUrl: gradeCourseUrl(item)
         }))
         .slice(0, MAX_COURSES);
       if (seed.length === 0) {
@@ -790,7 +839,7 @@ const EXTRACT_SCRIPT: &str = r#"
         return;
       }
       progress(`成绩：准备读取 ${seed.length} 门课 · ${seed.map((c) => c.courseTitle).slice(0, 4).join('、')}`);
-      startCourseQueue(seed);
+      startGradeQueue(seed);
       return;
     }
     let attempts = 0;
@@ -860,7 +909,7 @@ const EXTRACT_SCRIPT: &str = r#"
           sessionStorage.removeItem(fpKey);
           sessionStorage.removeItem(methodKey);
           sessionStorage.removeItem(sizeKey);
-          finish(catalogPayload());
+          finishCourses(catalogPayload());
         };
 
         // Phase size: 多项 screenshot — 滚到底 → 点「10▼ 项/页」→ 选更大条数.
@@ -1065,42 +1114,103 @@ const EXTRACT_SCRIPT: &str = r#"
         return;
       }
 
-      // ===== TASKS mode: build course queue from 我的课程 (first pages) =====
-      // Mid-crawl: if we bounced back to the list, resume current course — never reset.
+      // ===== TASKS mode: build course queue from every 我的课程 page =====
       if (mode === 'tasks') {
-        const existing = readJson(QUEUE_KEY, []);
-        const idxRaw = sessionStorage.getItem(INDEX_KEY);
+        // Mid-crawl: if we bounced back to the list, resume the current course.
+        const existing = readJson(TASK_QUEUE_KEY, []);
+        const idxRaw = sessionStorage.getItem(TASK_INDEX_KEY);
         if (
           existing.length > 0 &&
           idxRaw !== null &&
-          sessionStorage.getItem(RESULTS_KEY) !== null
+          sessionStorage.getItem(TASK_RESULTS_KEY) !== null
         ) {
           const course = existing[Number(idxRaw) || 0];
           if (course && (course.courseId || course.courseUrl)) {
             progress(
               `任务：误入列表页，返回当前课 (${Number(idxRaw) + 1}/${existing.length}) ${course.courseTitle || course.courseId}`
             );
-            go(
-              course.courseUrl ||
-              `${location.origin}/course/${course.courseId}/content`
-            );
+            go(taskCourseUrl(course));
             return;
           }
         }
-      }
 
-      const courses = pageCourses
-        .map((c) => ({
-          ...c,
-          courseUrl: c.courseUrl || `${location.origin}/course/${c.courseId}/content`
-        }))
-        .slice(0, MAX_COURSES);
-      progress(`任务：从课程列表取得 ${courses.length} 门，开始逐课扫描…`);
-      startCourseQueue(courses);
+        // The task importer must walk the same paginated catalog the user sees.
+        // Do not start the homework queue until every catalog page has been read.
+        const hashPage = Number((location.hash.match(/pageIndex=(\d+)/) || [])[1] || 0);
+        const storedPage = Number(sessionStorage.getItem(TASK_CATALOG_PAGE_KEY) || '0');
+        const page = hashPage || storedPage || 1;
+        const waitCount = Number(sessionStorage.getItem(TASK_CATALOG_WAIT_KEY) || '0');
+        const previousFingerprint = sessionStorage.getItem(TASK_CATALOG_FP_KEY) || '';
+        const fingerprint = pageCourses.map((c) => c.courseId).sort().join(',');
+        const accumulated = readJson(TASK_CATALOG_ACCUM_KEY, []);
+        const seen = new Set(accumulated.map((item) => item.courseId));
+        let newOnPage = 0;
+        for (const course of pageCourses) {
+          if (seen.has(course.courseId)) continue;
+          seen.add(course.courseId);
+          accumulated.push(course);
+          newOnPage += 1;
+          if (accumulated.length >= MAX_CATALOG_COURSES) break;
+        }
+        sessionStorage.setItem(TASK_CATALOG_ACCUM_KEY, JSON.stringify(accumulated));
+
+        const finishTaskCatalog = (reason) => {
+          const courses = accumulated
+            .slice(0, MAX_TASK_COURSES)
+            .map((course) => ({ ...course, courseUrl: taskCourseUrl(course) }));
+          progress(`${reason} · 共${courses.length}门，开始逐课扫描…`);
+          startTaskQueue(courses);
+        };
+
+        // A hard navigation can briefly show the previous SPA page. Wait for
+        // the fingerprint to change before accepting page N as a real page.
+        if (page > 1 && fingerprint && previousFingerprint && fingerprint === previousFingerprint) {
+          if (waitCount < 8) {
+            sessionStorage.setItem(TASK_CATALOG_WAIT_KEY, String(waitCount + 1));
+            progress(`任务：等待第${page}页课程列表刷新… (${waitCount + 1}/8) · 已收集${accumulated.length}门`);
+            if (waitCount === 2) go(catalogPageUrl(page, 'tasks'));
+            setTimeout(inspect, 500);
+            return;
+          }
+          if (accumulated.length > 0) {
+            finishTaskCatalog(`任务：第${page}页未刷新，停止翻页并写入已收集课程`);
+          } else {
+            fail();
+          }
+          return;
+        }
+
+        if (pageCourses.length === 0) {
+          if (waitCount < 8) {
+            sessionStorage.setItem(TASK_CATALOG_WAIT_KEY, String(waitCount + 1));
+            progress(`任务：第${page}页尚无课程卡片，等待渲染… (${waitCount + 1}/8)`);
+            setTimeout(inspect, 400);
+            return;
+          }
+          if (accumulated.length > 0) {
+            finishTaskCatalog(`任务：第${page}页为空，已收齐课程目录`);
+          } else {
+            fail();
+          }
+          return;
+        }
+
+        progress(`任务：读取课程第${page}页 · 本页${pageCourses.length}门 · 新增${newOnPage} · 累计${accumulated.length}`);
+        if (accumulated.length >= MAX_CATALOG_COURSES || page >= MAX_CATALOG_PAGES) {
+          finishTaskCatalog('任务：达到课程目录上限');
+          return;
+        }
+
+        sessionStorage.setItem(TASK_CATALOG_PAGE_KEY, String(page + 1));
+        sessionStorage.setItem(TASK_CATALOG_FP_KEY, fingerprint || previousFingerprint || 'empty');
+        sessionStorage.setItem(TASK_CATALOG_WAIT_KEY, '0');
+        progress(`任务：课程目录翻页 → 第${page + 1}页`);
+        go(catalogPageUrl(page + 1, 'tasks'));
+        return;
+      }
     };
     inspect();
   };
-
   const activityIdFromUrl = (value) => {
     try {
       const url = new URL(value, location.origin);
@@ -1139,193 +1249,39 @@ const EXTRACT_SCRIPT: &str = r#"
       activityUrl: `${location.origin}/course/${course.courseId}/learning-activity/full-screen#/${activityId}`
     };
   };
-  const lastDeadlineIsPast = (text) => {
-    const matches = Array.from(
-      text.matchAll(/(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\s+(\d{1,2}):(\d{2})/g)
-    );
-    const match = matches.at(-1);
-    if (!match) return false;
-    const [, year, month, day, hour, minute] = match;
-    const timestamp = new Date(
-      Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)
-    ).getTime();
-    return Number.isFinite(timestamp) && timestamp <= Date.now();
-  };
-  const isGradeCandidate = (text) =>
-    /已交|已提交|已完成|已结束|已截止|截止交付|批阅|评分/.test(text) ||
-    lastDeadlineIsPast(text);
   const numberValue = (raw) => {
-    const value = Number(String(raw || '').replace(/,/g, ''));
+    const value = Number(String(raw ?? '').replace(/,/g, ''));
     return Number.isFinite(value) && value >= 0 ? value : undefined;
   };
-  const gradeMeta = (detailText, summaryText) => {
-    const detail = normalize(detailText);
-    const summary = normalize(summaryText);
-    const combined = `${detail} ${summary}`;
-    // Content-list chips: "已交 5分" / "已交5分" (see 学在浙大成绩 screenshots).
-    const scoreMatch =
-      detail.match(/最终成绩\s*[:：]?\s*(\d+(?:\.\d+)?)\s*分/) ||
-      detail.match(/本次作业得分为\s*(\d+(?:\.\d+)?)\s*分/) ||
-      detail.match(/教师评分\s*[:：]?\s*(\d+(?:\.\d+)?)\s*分/) ||
-      summary.match(/已交(?:付)?\s*(\d+(?:\.\d+)?)\s*分/) ||
-      combined.match(/已交(?:付)?\s*(\d+(?:\.\d+)?)\s*分/);
-    const score = numberValue(scoreMatch?.[1]);
-    const explicitMax =
-      detail.match(/(?:满分|总分)\s*[:：]?\s*(\d+(?:\.\d+)?)/) ||
-      detail.match(/教师评分[^()]*\(\s*(\d+(?:\.\d+)?)\s*[*×]\s*\d+(?:\.\d+)?\s*%\s*\)/);
-    let maxScore = numberValue(explicitMax?.[1]);
-    if (maxScore === undefined && score !== undefined) {
-      const percentMatch = detail.match(/教师评分[^()]*\([^)]*?([0-9]+(?:\.[0-9]+)?)\s*%\s*\)/);
-      const percent = numberValue(percentMatch?.[1]);
-      if (percent && percent <= 100) maxScore = score / (percent / 100);
-    }
-    // Published score is enough even without maxScore.
-    if (score !== undefined) {
-      return { score, ...(maxScore !== undefined ? { maxScore } : {}), gradeStatus: 'published' };
-    }
-
-    const unpublished =
-      /(?:最终成绩|原始成绩|教师评分)\s*[:：]?\s*(?:--|—|－)\s*分?/.test(detail) ||
-      /不公布|成绩(?:尚未|暂未|未)公布/.test(detail);
-    const deliverySection = detail.includes('交付历史与批改记录')
-      ? detail.split('交付历史与批改记录').slice(1).join(' ')
-      : '';
-    const hasDelivery =
-      /已交(?:付|作业)?|已提交|已交付|提交成功|交付成功/.test(combined) ||
-      /20\d{2}[.-]\d{1,2}[.-]\d{1,2}\s+\d{1,2}:\d{2}/.test(deliverySection);
-    const explicitlyMissing = /未交(?:作业)?|未提交|尚未提交|无交付记录|没有交付记录/.test(combined);
-    const ended = /作业已经截止交付|已截止|已结束/.test(combined) || lastDeadlineIsPast(summary);
-
-    // Submitted without a published number → 未公布 (even before deadline).
-    if (hasDelivery) return { gradeStatus: 'unpublished' };
-    // Closed and not submitted (e.g. 补交通道 已结束) → 错过 DDL, not a score cell.
-    if (ended && (explicitlyMissing || !hasDelivery)) return { gradeStatus: 'missed' };
-    if (unpublished) return { gradeStatus: 'unpublished' };
-    return {};
-  };
-
-  const isHomeworkLikeText = (text) => {
-    if (!text || /课件|查看文件|知识图谱|公告|录播|题库/.test(text)) return false;
-    // Content list chips (学在浙大成绩 screenshots): "已交" / "已交 5分" / "已结束"
-    // often have NO date on the chapter page.
-    if (/结束时间|截止交付|未完成|部分完成|完成指标|已交|已提交|已结束|已截止|未交|补交/.test(text)) {
-      return true;
-    }
-    if (/\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(text) && /Lab|Homework|作业|实验|练习|Pwn|Web|Report/i.test(text)) {
-      return true;
-    }
-    return false;
-  };
-  const isGradeChipRow = (text) =>
-    /已交|已提交|已交付|已结束|已截止|未交|补交|截止交付/.test(text);
-
-  const expandContentChapters = () => {
-    // Expand collapsed chapter blocks so homework rows become visible (下翻图: 第N章 ^).
-    let clicks = 0;
-    const tryClick = (node) => {
-      if (!node || clicks >= 40) return;
-      try {
-        node.click();
-        clicks += 1;
-      } catch (_) {}
-    };
-    for (const node of Array.from(
-      document.querySelectorAll(
-        '[aria-expanded="false"], .collapsed, [class*="collapse"], [class*="expand"], i, button, span, svg'
-      )
-    )) {
-      const label = normalize(
-        node.getAttribute?.('aria-label') || node.getAttribute?.('title') || node.textContent
+  const TASK_ROW_SELECTOR =
+    '[ng-repeat="homework in homeworkList track by homework.id"]';
+  const nodeIsVisible = (node) => {
+    if (!node || node.classList?.contains('ng-hide')) return false;
+    try {
+      const style = getComputedStyle(node);
+      const rect = node.getBoundingClientRect();
+      return (
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        rect.width > 0 &&
+        rect.height > 0
       );
-      const cls = String(node.className || '');
-      if (
-        node.getAttribute?.('aria-expanded') === 'false' ||
-        /展开|expand|caret|arrow|chevron|down|up/i.test(label + ' ' + cls)
-      ) {
-        tryClick(node);
-      }
-    }
-    // Chapter headers like "第10章气体动理论" with a caret on the right.
-    for (const el of Array.from(document.querySelectorAll('div, h3, h4, section, li, header'))) {
-      if (clicks >= 40) break;
-      const t = normalize(el.innerText || el.textContent);
-      if (!/^第\s*\d+\s*章/.test(t) || t.length > 60) continue;
-      // Prefer clicking a caret-like child, else the header itself.
-      const caret =
-        el.querySelector?.('[class*="arrow"], [class*="expand"], [class*="caret"], i, svg, button') ||
-        el;
-      tryClick(caret);
+    } catch {
+      return false;
     }
   };
-
-  const homeworkSummaries = () => {
-    const mode = readMode();
-    if (mode === 'grades') expandContentChapters();
-
-    const selectors = [
-      '.activity-summary[ng-switch-when="homework"]',
-      '[ng-switch-when="homework"] > .activity-summary',
-      '[ng-switch-when="homework"] .activity-summary',
-      '[ng-switch-when="homework"]',
-      '.activity-summary[ng-switch-when="exam"]',
-      '.activity-summary',
-      '[class*="activity"]',
-      '[class*="homework"]'
-    ];
-    const seen = new Set();
-    const direct = selectors.flatMap((selector) =>
-      Array.from(document.querySelectorAll(selector))
-    ).map((node) =>
-      node.matches?.('.activity-summary')
-        ? node
-        : node.querySelector?.('.activity-summary') || node
-    ).filter((node) => {
-      if (!node || seen.has(node)) return false;
-      const text = normalize(node.innerText || node.textContent);
-      if (text.length < 2 || text.length > 400) return false;
-      if (!isHomeworkLikeText(text) && !(mode === 'grades' && isGradeChipRow(text))) return false;
-      // Skip huge wrappers that contain many activities.
-      if (node.children && node.children.length > 20) return false;
-      seen.add(node);
-      return true;
-    });
-    if (direct.length > 0) return direct;
-
-    // Fallback for chapter content pages (grades + tasks).
-    // Grades: accept "Lab0 已交 已结束" WITHOUT a date (see 学在浙大成绩2 screenshot).
-    const containers = [];
-    const containerSeen = new Set();
-    const candidates = Array.from(document.querySelectorAll('div, li, section, tr, a, span'));
-    for (const node of candidates) {
-      if (containerSeen.has(node)) continue;
-      if (node.children && node.children.length > 12) continue;
-      const text = normalize(node.innerText || node.textContent);
-      if (text.length < 4 || text.length > 360) continue;
-      const gradeRow = isGradeChipRow(text);
-      if (!isHomeworkLikeText(text) && !gradeRow) continue;
-      const hasDate = /\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(text);
-      if (mode === 'grades') {
-        if (!gradeRow && !hasDate) continue;
-      } else if (!hasDate) {
-        continue;
-      }
-      // Prefer the tightest container: skip if a child already qualifies.
-      const childHit = Array.from(node.children || []).some((child) => {
-        const childText = normalize(child.innerText || child.textContent);
-        if (childText.length < 4 || childText.length >= text.length) return false;
-        if (mode === 'grades') {
-          return isGradeChipRow(childText) || (isHomeworkLikeText(childText) && /\d{4}/.test(childText));
-        }
-        return isHomeworkLikeText(childText) && /\d{4}/.test(childText);
-      });
-      if (childHit) continue;
-      containerSeen.add(node);
-      containers.push(node);
-      if (containers.length >= 60) break;
-    }
-    return containers;
-  };
-
+  const taskPageLoading = (controller) =>
+    Array.from(
+      (controller || document).querySelectorAll(
+        '[ng-show="loadingFullPage"], [ng-show="loading"], .loading-bg-mask, .loading-gif, .loading-spinner'
+      )
+    ).some(nodeIsVisible);
+  const taskPageEmptyNode = (controller) =>
+    Array.from(
+      (controller || document).querySelectorAll(
+        '[ng-if*="homeworkList.length == 0"], [ng-if*="homeworkList.length === 0"], [ng-show*="homeworkList.length == 0"]'
+      )
+    ).find(nodeIsVisible);
   const cleanTaskTitle = (raw, fullText) => {
     let title = normalize(raw);
     // Never accept pure deadline labels as titles (读取问题 screenshot).
@@ -1351,157 +1307,224 @@ const EXTRACT_SCRIPT: &str = r#"
     if (!title || /^(结束时间|时间)/.test(title) || /^\d{4}[-/.]/.test(title)) return '';
     return title.slice(0, 160);
   };
-
-  /** Map content-list chips to gradeStatus without opening homework detail. */
-  const gradeStatusFromListText = (text) => {
-    const t = normalize(text);
-    // Skip pure courseware rows (orange 查看文件 on 下翻 screenshot).
-    if (/查看文件|课件/.test(t) && !/作业|Lab|Homework|实验|补交/i.test(t)) {
-      return {};
-    }
-    // Strict: "已交 5分" / "已交5分" badge (下翻 screenshot).
-    const scoreMatch =
-      t.match(/已交(?:付)?\s*(\d+(?:\.\d+)?)\s*分/) ||
-      t.match(/已交(?:付)?(\d+(?:\.\d+)?)分/);
-    if (scoreMatch) {
-      const score = numberValue(scoreMatch[1]);
-      if (score !== undefined) {
-        return { score, gradeStatus: 'published' };
-      }
-    }
-    // 已交 without a published number → 未公布. ALWAYS win over 已结束.
-    // Screenshot rows are green "已交 已结束" — submitted, not missed.
-    if (/已交|已提交|已交付|已完成/.test(t)) {
-      return { gradeStatus: 'unpublished' };
-    }
-    // Only pure non-submit closed items → missed (补交通道 已结束, no 已交).
-    if (/补交通道/.test(t) && /已结束|已截止/.test(t)) {
-      return { gradeStatus: 'missed' };
-    }
-    if (/未交|未提交/.test(t) && /已结束|已截止|截止/.test(t)) {
-      return { gradeStatus: 'missed' };
-    }
-    if (/已结束|已截止|截止交付/.test(t) && !/已交|已提交|已交付|已完成/.test(t)) {
-      // Without 已交 chip, closed homework is missed — but require 作业-like title.
-      if (/作业|Lab|Homework|实验|补交|通道/i.test(t)) {
-        return { gradeStatus: 'missed' };
-      }
-    }
-    return {};
-  };
-
-  /** Walk up the DOM to a row that contains BOTH homework title and status chips. */
-  const fullGradeRowText = (node) => {
-    let el = node;
-    let fallback = normalize(node?.innerText || node?.textContent || '');
-    for (let depth = 0; depth < 8 && el; depth += 1) {
-      const t = normalize(el.innerText || el.textContent || '');
-      if (t.length > 8 && t.length < 500) {
-        const hasHw = /作业|Lab|Homework|实验|补交|通道/i.test(t);
-        const hasSubmit = /已交|已提交|已交付|已完成/.test(t);
-        const hasClosed = /已结束|已截止|截止交付|未交|补交/.test(t);
-        // Ideal: homework + 已交 (and maybe 已结束)
-        if (hasHw && hasSubmit) return t;
-        if (hasHw && hasClosed) fallback = t;
-      }
-      if (t.length > 2500) break;
-      el = el.parentElement;
-    }
-    return fallback;
-  };
-
-  /** 下翻: step through the page so lazy chapters mount (not only jump to end). */
-  const scrollCourseContentDeep = (pass = 0) => {
-    expandContentChapters();
-    const maxH = Math.max(
-      document.body?.scrollHeight || 0,
-      document.documentElement?.scrollHeight || 0,
-      2400
+  /**
+   * Real 2026 学在浙大 task page contract:
+   *   /course/{id}/homework
+   *   [ng-controller="HomeworkListController"]
+   *   homework in homeworkList track by homework.id
+   *
+   * Rows without a rendered timestamp are still proof that the list loaded,
+   * but they are not DDL candidates. This is common for already-ended work.
+   */
+  const extractTasksOnHomeworkPage = (course, allowEmpty = false) => {
+    const controller = document.querySelector(
+      '[ng-controller="HomeworkListController"]'
     );
-    // First passes: step down; later: jump to bottom.
-    const y = pass < 8
-      ? Math.min(maxH, (pass + 1) * Math.max(500, Math.floor(maxH / 10)))
-      : maxH;
-    try { window.scrollTo(0, y); } catch (_) {}
-    const roots = Array.from(
-      document.querySelectorAll(
-        '.main, main, [class*="content"], [class*="scroll"], [class*="activity"], [class*="list"], [class*="syllabus"], [class*="chapter"]'
+    const rows = Array.from(document.querySelectorAll(TASK_ROW_SELECTOR));
+    const loading = taskPageLoading(controller);
+    const emptyNode = taskPageEmptyNode(controller);
+    const controllerText = normalize(controller?.innerText || controller?.textContent);
+    const shellReady = Boolean(
+      controller &&
+      (
+        controller.querySelector('.homework-section') ||
+        controller.querySelector('[ng-if*="homeworkList.length > 0"]') ||
+        emptyNode ||
+        /作业名称|作业形式/.test(controllerText)
       )
     );
-    for (const el of roots) {
-      try {
-        if (pass < 8) {
-          el.scrollTop = Math.min(el.scrollHeight || 0, (pass + 1) * 400);
-        } else {
-          el.scrollTop = el.scrollHeight || 999999;
-        }
-      } catch (_) {}
-    }
-  };
-
-  /**
-   * Grades-only: harvest rows that show 已交 / 已交*分 / 已结束 on the course page.
-   * Does not open any learning-activity detail URL.
-   */
-  const extractGradesOnContentPage = (course) => {
-    expandContentChapters();
-    const found = [];
-    const seenTitle = new Set();
-    const pushGrade = (title, text) => {
-      // Always re-resolve status from the richest row text (title + chips).
-      const row = normalize(text);
-      if (/课件|查看文件/.test(row) && !/作业|Lab|Homework|实验|补交/i.test(row)) return;
-      const clean = cleanTaskTitle(title, row);
-      if (!clean || seenTitle.has(clean)) return;
-      // Ignore pure chapter headers
-      if (/^第\s*\d+\s*章[^作]*$/.test(clean) && !/作业/.test(clean)) return;
-      const statusMeta = gradeStatusFromListText(row);
-      if (!statusMeta.gradeStatus) return;
-      seenTitle.add(clean);
-      found.push({
-        courseId: course.courseId,
-        courseTitle: course.courseTitle,
-        courseUrl: course.courseUrl || `${location.origin}/course/${course.courseId}/content`,
-        title: clean,
-        text: row.slice(0, 400),
-        ...statusMeta
-      });
+    const stats = {
+      controller: Boolean(controller),
+      rowCount: rows.length,
+      datedCount: 0,
+      explicitEmpty: Boolean(emptyNode),
+      loading,
+      source: 'homeworkList'
     };
+    if (!shellReady || loading) {
+      return { ready: false, tasks: null, stats };
+    }
 
-    // 1) DOM activity rows — use full row text so 已交 chips are not lost.
-    for (const summary of homeworkSummaries()) {
-      const row = fullGradeRowText(summary);
-      if (!/已交|已结束|未交|补交|作业|Lab|Homework/i.test(row)) continue;
+    if (rows.length === 0) {
+      if (!allowEmpty) return { ready: true, tasks: null, stats };
+      return { ready: true, tasks: [], confirmedEmpty: true, stats };
+    }
+
+    const tasks = rows.flatMap((row) => {
+      const taskText = normalize(row.innerText || row.textContent);
       const explicitTitle = normalize(
-        summary.querySelector(
-          '.title, .activity-title, [ng-bind*="title"], h3, h4, a[href*="learning-activity"], a[href*="full-screen"]'
+        row.querySelector(
+          '[ng-bind="homework.title"], .shorten-title, .title, .activity-title'
         )?.textContent
       );
-      pushGrade(explicitTitle || row, row);
-    }
-
-    // 2) Line-scan with look-ahead: merge title line + following chip line(s).
-    //    Fixes false "missed" when 已交 and 已结束 split across lines.
-    const lines = String(document.body?.innerText || '')
-      .split(/\n+/)
-      .map((line) => normalize(line))
-      .filter((line) => line.length >= 2 && line.length <= 220);
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i];
-      const next = lines[i + 1] || '';
-      const next2 = lines[i + 2] || '';
-      const merged = normalize([line, next, next2].join(' '));
-      // Prefer lines that look like homework titles
-      const looksHw = /作业|Lab|Homework|实验|补交|通道/i.test(line) || /作业|Lab|Homework|实验|补交|通道/i.test(merged);
-      const hasStatus = /已交|已结束|未交|补交/.test(merged);
-      if (!looksHw || !hasStatus) continue;
-      if (/课件|查看文件/.test(merged) && !/作业/.test(merged)) continue;
-      const title = cleanTaskTitle(line, merged) || cleanTaskTitle(merged, merged);
-      pushGrade(title, merged);
-    }
-    return found;
+      const title = cleanTaskTitle(explicitTitle, taskText);
+      if (!title) return [];
+      // The web importer requires an exact deadline timestamp. Ended rows
+      // commonly render only "已结束" and intentionally stay out of DDL data.
+      if (!/\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\s+\d{1,2}:\d{2}/.test(taskText)) {
+        return [];
+      }
+      stats.datedCount += 1;
+      const activity = activityLink(row, course);
+      return [{
+        courseId: course.courseId,
+        courseTitle: course.courseTitle,
+        courseUrl: taskCourseUrl(course),
+        ...activity,
+        title,
+        text: taskText.slice(0, 400)
+      }];
+    });
+    return { ready: true, tasks, confirmedEmpty: false, stats };
   };
 
+  const activityFromScoreRow = (row) => {
+    try {
+      const scope = window.angular?.element(row)?.scope?.();
+      return scope?.activity || scope?.$parent?.activity || null;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const collectScoreActivitiesFromScopes = () => {
+    const state = {
+      hasAngular: Boolean(window.angular?.element),
+      scopeCount: 0,
+      categoryCount: 0,
+      activityCount: 0,
+      homeworkCount: 0,
+      activities: null
+    };
+    if (!window.angular?.element) return state;
+    const elements = [
+      document.querySelector('.score-page'),
+      ...Array.from(document.querySelectorAll('.activity.row, [ng-repeat*="activity in category.activities"], [ng-controller], main, body'))
+    ].filter(Boolean);
+    const scopes = [];
+    const seenScopes = new Set();
+    const pushScope = (scope) => {
+      let current = scope;
+      let depth = 0;
+      while (current && depth < 8) {
+        if (!seenScopes.has(current)) {
+          seenScopes.add(current);
+          scopes.push(current);
+        }
+        current = current.$parent;
+        depth += 1;
+      }
+    };
+    for (const el of elements) {
+      try { pushScope(window.angular.element(el).scope?.()); } catch (_) {}
+      try { pushScope(window.angular.element(el).isolateScope?.()); } catch (_) {}
+    }
+    state.scopeCount = scopes.length;
+    for (const scope of scopes) {
+      const categories = scope?.activityCategories;
+      if (!Array.isArray(categories)) continue;
+      state.categoryCount = Math.max(state.categoryCount, categories.length);
+      const activities = [];
+      const seen = new Set();
+      for (const category of categories) {
+        for (const activity of Array.isArray(category?.activities) ? category.activities : []) {
+          const key = String(activity?.id ?? activity?.activityId ?? activity?.activity_id ?? activity?.title ?? activities.length);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          activities.push(activity);
+        }
+      }
+      if (activities.length > state.activityCount) {
+        state.activities = activities;
+        state.activityCount = activities.length;
+        state.homeworkCount = activities.filter((activity) => String(activity?.type || '').toLowerCase() === 'homework').length;
+      }
+    }
+    return state;
+  };
+  const gradeFromScoreActivity = (course, activity, rowText = '') => {
+    if (String(activity?.type || '').toLowerCase() !== 'homework') return null;
+    const title = normalize(activity?.title || rowText.split(' ')[0]);
+    if (!title) return null;
+    const status = String(activity?.student_status || activity?.status || '').toLowerCase();
+    const rawScore = activity?.score;
+    const score = rawScore === undefined || rawScore === null || rawScore === ''
+      ? undefined
+      : Number(String(rawScore).replace(/,/g, ''));
+    let gradeStatus;
+    if (status === 'scored' && Number.isFinite(score) && score >= 0) {
+      gradeStatus = 'published';
+    } else if (status === 'un_submitted' || /\u672a\u4ea4/.test(rowText)) {
+      gradeStatus = 'missed';
+    } else if (status === 'un_marked' || status === 'scored' || /\u672a\u516c\u5e03|\u672a\u6279\u6539/.test(rowText)) {
+      gradeStatus = 'unpublished';
+    } else if (/\u5df2\u7ed3\u675f|\u622a\u6b62/.test(rowText)) {
+      gradeStatus = 'missed';
+    } else {
+      return null;
+    }
+    const activityId = activity?.id ?? activity?.activityId ?? activity?.activity_id;
+    let activityUrl;
+    try {
+      if (activity?.url) activityUrl = new URL(activity.url, location.origin).href;
+    } catch (_) {}
+    return {
+      courseId: course.courseId,
+      courseTitle: course.courseTitle,
+      courseUrl: gradeCourseUrl(course),
+      ...(activityId != null ? { activityId: String(activityId) } : {}),
+      ...(activityUrl ? { activityUrl } : {}),
+      title,
+      text: rowText.slice(0, 400),
+      ...(gradeStatus === 'published' ? { score } : {}),
+      gradeStatus
+    };
+  };
+
+  /** Read the native /score page; an empty activity list is valid only after a bounded wait. */
+  const extractGradesOnScorePage = (course, allowEmpty = false) => {
+    const scoreShellReady = Boolean(
+      document.querySelector('.score-page') ||
+      document.querySelector('[ng-repeat*="category in"]') ||
+      document.querySelector('[ng-repeat*="activity in category.activities"]') ||
+      document.querySelector('.activity.row')
+    );
+    if (!scoreShellReady) return { ready: false, grades: null, stats: null };
+
+    const scoreState = collectScoreActivitiesFromScopes();
+    const rows = Array.from(document.querySelectorAll('.activity.row'))
+      .filter((row) => (row.getAttribute('ng-repeat') || '').includes('activity in category.activities'));
+    const found = [];
+    const seen = new Set();
+    const pushGrade = (grade) => {
+      if (!grade) return;
+      const key = `${grade.activityId || ''}|${grade.title}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      found.push(grade);
+    };
+
+    if (Array.isArray(scoreState?.activities) && scoreState.activityCount > 0) {
+      for (const activity of scoreState.activities) {
+        pushGrade(gradeFromScoreActivity(course, activity));
+      }
+      return { ready: true, grades: found, stats: { ...scoreState, rowCount: rows.length, source: 'activityCategories' } };
+    }
+
+    if (rows.length > 0) {
+      for (const row of rows) {
+        const activity = activityFromScoreRow(row);
+        const rowText = normalize(row.innerText || row.textContent);
+        pushGrade(gradeFromScoreActivity(course, activity, rowText));
+      }
+      return { ready: true, grades: found, stats: { ...scoreState, rowCount: rows.length, source: 'rows' } };
+    }
+
+    if (allowEmpty) {
+      return { ready: true, grades: [], stats: { ...scoreState, rowCount: rows.length, source: 'empty-after-wait' } };
+    }
+    return { ready: true, grades: null, stats: { ...scoreState, rowCount: rows.length, source: 'waiting' } };
+  };
   /**
    * Only click in-course sub-nav (章节/作业), never sidebar "我的课程" etc.
    * Wrong clicks were kicking grades back to the course list.
@@ -1527,213 +1550,184 @@ const EXTRACT_SCRIPT: &str = r#"
     try { tab.click(); return true; } catch (_) { return false; }
   };
 
-  const advanceCourseOrFinish = (results) => {
-    const mode = readMode();
-    const queue = readJson(QUEUE_KEY, []);
-    const index = Number(sessionStorage.getItem(INDEX_KEY) || 0);
+  const advanceTaskCourse = (results) => {
+    const queue = readJson(TASK_QUEUE_KEY, []);
+    const index = Number(sessionStorage.getItem(TASK_INDEX_KEY) || 0);
     const nextIndex = index + 1;
     if (nextIndex < queue.length) {
       const next = queue[nextIndex];
-      const tag = mode === 'grades' ? '成绩' : '任务';
-      progress(`${tag}：下一门课 (${nextIndex + 1}/${queue.length}) ${next.courseTitle || next.courseId}`);
-      sessionStorage.setItem(INDEX_KEY, String(nextIndex));
-      // Always stay on course content, never /user/courses mid-crawl.
-      // go() is queued after progress so the hop is not cancelled by zju-progress.
-      go(next.courseUrl || `${location.origin}/course/${next.courseId}/content`);
+      progress(`任务：下一门课 (${nextIndex + 1}/${queue.length}) ${next.courseTitle || next.courseId}`);
+      sessionStorage.setItem(TASK_INDEX_KEY, String(nextIndex));
+      go(taskCourseUrl(next));
       return;
     }
-    if (mode === 'grades') {
-      progress(`成绩：全部课程扫完，回报 ${(results || []).length} 条`);
-    } else {
-      progress(`任务：全部课程扫完，回报 ${(results || []).length} 条原始记录`);
-    }
-    finish(results || readJson(RESULTS_KEY, []));
+    progress(`任务：全部课程扫完，回报 ${(results || []).length} 条原始记录`);
+    finishTasks(results || readJson(TASK_RESULTS_KEY, []));
   };
-
-  const scanCourse = () => {
-    const queue = readJson(QUEUE_KEY, []);
-    const index = Number(sessionStorage.getItem(INDEX_KEY) || 0);
-    const course = queue[index];
-    if (!course) {
-      finish(readJson(RESULTS_KEY, []));
+  const advanceGradeCourse = (results) => {
+    const queue = readJson(GRADE_QUEUE_KEY, []);
+    const index = Number(sessionStorage.getItem(GRADE_INDEX_KEY) || 0);
+    const nextIndex = index + 1;
+    if (nextIndex < queue.length) {
+      const next = queue[nextIndex];
+      progress(`成绩：下一门课 (${nextIndex + 1}/${queue.length}) ${next.courseTitle || next.courseId}`);
+      sessionStorage.setItem(GRADE_INDEX_KEY, String(nextIndex));
+      go(gradeCourseUrl(next));
       return;
     }
+    progress(`成绩：全部课程扫完，回报 ${(results || []).length} 条`);
+    finishGrades(results || readJson(GRADE_RESULTS_KEY, []));
+  };
+  const commitGradeSnapshot = (course, grades) => {
+    const results = readJson(GRADE_RESULTS_KEY, []);
+    const keys = new Set(results.map((item) => `${item.courseId}|${item.title}`));
+    let added = 0;
+    for (const grade of grades || []) {
+      const key = `${grade.courseId}|${grade.title}`;
+      if (keys.has(key)) continue;
+      keys.add(key);
+      results.push(grade);
+      added += 1;
+    }
+    sessionStorage.setItem(GRADE_RESULTS_KEY, JSON.stringify(results.slice(0, 300)));
+    const pub = (grades || []).filter((g) => g.gradeStatus === 'published').length;
+    const unp = (grades || []).filter((g) => g.gradeStatus === 'unpublished').length;
+    const mis = (grades || []).filter((g) => g.gradeStatus === 'missed').length;
+    progress(
+      `ZJU grades: ${course.courseTitle || course.courseId} -> +${added} rows (this course ${(grades || []).length}: published ${pub}/unpublished ${unp}/missed ${mis}, total ${results.length})` +
+      ((grades || []).length === 0 ? ' - no homework grades' : '')
+    );
+    advanceGradeCourse(results);
+  };
+  const scanGradeCourse = () => {
+    const queue = readJson(GRADE_QUEUE_KEY, []);
+    const index = Number(sessionStorage.getItem(GRADE_INDEX_KEY) || 0);
+    const course = queue[index];
+    if (!course) return finishGrades(readJson(GRADE_RESULTS_KEY, []));
+
     let attempts = 0;
     const inspect = () => {
-      const mode = readMode();
-
-      // Never process learning-activity detail pages in either mode.
-      if (/learning-activity/.test(location.pathname + location.hash)) {
-        go(course.courseUrl || `${location.origin}/course/${course.courseId}/content`);
-        return;
-      }
-
-      // If we left the course (e.g. sidebar click), bounce back to content — do not re-scan list.
-      if (!location.pathname.includes(`/course/${course.courseId}`)) {
-        const bounceKey = 'fuckddl:zju:bounce';
+      if (
+        /learning-activity/.test(location.pathname + location.hash) ||
+        !location.pathname.includes(`/course/${course.courseId}`) ||
+        !isScoreRoute()
+      ) {
+        const bounceKey = 'fuckddl:zju:grades:bounce';
         const bounce = Number(sessionStorage.getItem(bounceKey) || '0') + 1;
         sessionStorage.setItem(bounceKey, String(bounce));
-        const tag = mode === 'grades' ? '成绩' : '任务';
         if (bounce > 6) {
-          progress(`${tag}：课程页反复跳转，跳过 ${course.courseTitle || course.courseId}`);
+          progress(`成绩：课程页反复跳转，跳过 ${course.courseTitle || course.courseId}`);
           sessionStorage.removeItem(bounceKey);
-          advanceCourseOrFinish(readJson(RESULTS_KEY, []));
+          advanceGradeCourse(readJson(GRADE_RESULTS_KEY, []));
           return;
         }
-        if (bounce === 1 || mode === 'grades') {
-          progress(`${tag}：页面离开课程，返回 ${course.courseTitle || course.courseId}`);
+        if (bounce === 1) {
+          progress(`成绩：切换到 ${course.courseTitle || course.courseId} 成绩页`);
         }
-        go(course.courseUrl || `${location.origin}/course/${course.courseId}/content`);
+        go(gradeCourseUrl(course));
         return;
       }
-      try { sessionStorage.removeItem('fuckddl:zju:bounce'); } catch (_) {}
+      sessionStorage.removeItem('fuckddl:zju:grades:bounce');
 
-      const bodyText = document.body?.innerText || '';
-      const courseReady = Boolean(
-        document.querySelector(`a[href="/course/${course.courseId}/homework"]`) ||
-        document.querySelector(`a[href*="/course/${course.courseId}/"]`) ||
-        document.querySelector('.activity-summary') ||
-        /章节|作业|已交|已结束|结束时间|类型|完成指标|Lab|Homework/i.test(bodyText)
-      );
-
-      // ========== GRADES: content page only, scroll in-page, never open list ==========
-      if (mode === 'grades') {
-        if (!courseReady && attempts < 16) {
-          attempts += 1;
-          if (attempts === 1) {
-            progress(`成绩：打开 ${course.courseTitle || course.courseId}，等待内容…`);
-          }
-          setTimeout(inspect, 350);
-          return;
-        }
-        const scrollKey = `fuckddl:zju:grade-scroll:${course.courseId}`;
-        const lastCountKey = `fuckddl:zju:grade-last:${course.courseId}`;
-        const stableKey = `fuckddl:zju:grade-stable:${course.courseId}`;
-        const scrollRound = Number(sessionStorage.getItem(scrollKey) || '0');
-        // Stay on 章节 content; do NOT click 作业 tab (was navigating away on some pages).
-        expandContentChapters();
-        scrollCourseContentDeep(scrollRound);
-        let grades = extractGradesOnContentPage(course);
-        const lastCount = Number(sessionStorage.getItem(lastCountKey) || '0');
-        const stableRounds = grades.length === lastCount && grades.length > 0
-          ? Number(sessionStorage.getItem(stableKey) || '0') + 1
-          : 0;
-        sessionStorage.setItem(lastCountKey, String(grades.length));
-        sessionStorage.setItem(stableKey, String(stableRounds));
-        const needMore =
-          scrollRound < 16 &&
-          (scrollRound < 8 || grades.length === 0 || grades.length > lastCount || stableRounds < 2);
-        if (needMore) {
-          sessionStorage.setItem(scrollKey, String(scrollRound + 1));
-          if (scrollRound === 0) {
-            progress(`成绩：${course.courseTitle || course.courseId} 页内下翻+展开章节…`);
-          } else if (scrollRound % 3 === 0) {
-            const pub = grades.filter((g) => g.gradeStatus === 'published').length;
-            const unp = grades.filter((g) => g.gradeStatus === 'unpublished').length;
-            const mis = grades.filter((g) => g.gradeStatus === 'missed').length;
-            progress(
-              `成绩：下翻中… 第${scrollRound + 1}轮 · 识别 ${grades.length} 条（出分${pub}/未公布${unp}/错过${mis}）`
-            );
-          }
-          setTimeout(inspect, 480);
-          return;
-        }
-        sessionStorage.removeItem(scrollKey);
-        sessionStorage.removeItem(lastCountKey);
-        sessionStorage.removeItem(stableKey);
-        try { window.scrollTo(0, 0); } catch (_) {}
-        expandContentChapters();
-        for (let p = 0; p < 6; p += 1) scrollCourseContentDeep(p + 8);
-        grades = extractGradesOnContentPage(course);
-
-        const results = readJson(RESULTS_KEY, []);
-        const keys = new Set(results.map((item) => `${item.courseId}|${item.title}`));
-        let added = 0;
-        for (const g of grades) {
-          const key = `${g.courseId}|${g.title}`;
-          if (keys.has(key)) continue;
-          keys.add(key);
-          results.push(g);
-          added += 1;
-        }
-        sessionStorage.setItem(RESULTS_KEY, JSON.stringify(results.slice(0, 300)));
-        const pub = grades.filter((g) => g.gradeStatus === 'published').length;
-        const unp = grades.filter((g) => g.gradeStatus === 'unpublished').length;
-        const mis = grades.filter((g) => g.gradeStatus === 'missed').length;
-        const sample = grades.slice(0, 4).map((g) =>
-          `${g.title}:${g.gradeStatus}${g.score != null ? '=' + g.score : ''}`
-        ).join(' / ');
-        progress(
-          `成绩：${course.courseTitle || course.courseId} → +${added} 条（本课${grades.length}=出分${pub}/未公布${unp}/错过${mis}，累计${results.length}）` +
-          (sample ? ` · ${sample}` : grades.length === 0 ? ' · 未识别到已交/已结束' : '')
-        );
-        advanceCourseOrFinish(results);
-        return;
-      }
-
-      // ========== TASKS: simple summary crawl only ==========
-      // Light expand so Lab rows are visible; no grade tab-clicking / long scroll.
-      if (attempts === 0) {
-        progress(`任务：打开 ${course.courseTitle || course.courseId}…`);
-        try { expandContentChapters(); } catch (_) {}
-      }
-      const summaries = homeworkSummaries();
-      // Empty courses (思政等) skip quickly so the whole sync finishes.
-      // courseReady false: wait a bit for SPA; then skip.
-      // courseReady true + no summaries: short settle, then +0 and advance.
-      const maxWait = courseReady ? 6 : 10;
-      if (!courseReady || (summaries.length === 0 && attempts < 4)) {
+      const allowEmpty = attempts >= 18;
+      const extracted = extractGradesOnScorePage(course, allowEmpty);
+      const stats = extracted?.stats || {};
+      const statLine = `scope${stats.scopeCount ?? 0}/cat${stats.categoryCount ?? 0}/act${stats.activityCount ?? 0}/hw${stats.homeworkCount ?? 0}/row${stats.rowCount ?? 0}/${stats.source || 'none'}`;
+      if (!extracted || extracted.grades === null) {
         attempts += 1;
-        if (attempts < maxWait) {
-          if (attempts === 4 || attempts === 8) {
-            progress(
-              `任务：等待 ${course.courseTitle || course.courseId} 内容… (${attempts}/${maxWait})`
-            );
-          }
-          setTimeout(inspect, 280);
+        if (attempts === 1) {
+          progress(`成绩：打开 ${course.courseTitle || course.courseId} 成绩页，等待成绩结构…`);
+        } else if (attempts % 5 === 0) {
+          progress(`成绩：${course.courseTitle || course.courseId} 结构等待 ${attempts} · ${statLine}`);
+        }
+        if (attempts < 30) {
+          setTimeout(inspect, 500);
+          return;
+        }
+        progress(`成绩：${course.courseTitle || course.courseId} 成绩结构未就绪，跳过本课以保留旧数据 · ${statLine}`);
+        advanceGradeCourse(readJson(GRADE_RESULTS_KEY, []));
+        return;
+      }
+      progress(
+        (extracted.grades || []).length === 0
+          ? `成绩：${course.courseTitle || course.courseId} 未识别到 homework · ${statLine}`
+          : `成绩：${course.courseTitle || course.courseId} 结构就绪 · ${statLine}`
+      );
+      commitGradeSnapshot(course, extracted.grades || []);
+    };
+    inspect();
+  };
+
+  const scanTaskCourse = () => {
+    const queue = readJson(TASK_QUEUE_KEY, []);
+    const index = Number(sessionStorage.getItem(TASK_INDEX_KEY) || 0);
+    const course = queue[index];
+    if (!course) return finishTasks(readJson(TASK_RESULTS_KEY, []));
+
+    const recordTaskScan = (status) => {
+      const stats = readJson(TASK_SCAN_STATS_KEY, { confirmed: 0, uncertain: 0 });
+      stats[status] = Number(stats[status] || 0) + 1;
+      sessionStorage.setItem(TASK_SCAN_STATS_KEY, JSON.stringify(stats));
+    };
+    let attempts = 0;
+    const inspect = () => {
+      if (
+        /learning-activity/.test(location.pathname + location.hash) ||
+        !location.pathname.includes(`/course/${course.courseId}`) ||
+        !/\/homework(?:\/|$)/.test(location.pathname)
+      ) {
+        const bounceKey = 'fuckddl:zju:tasks:bounce';
+        const bounce = Number(sessionStorage.getItem(bounceKey) || '0') + 1;
+        sessionStorage.setItem(bounceKey, String(bounce));
+        if (bounce > 6) {
+          progress(`任务：课程页反复跳转，跳过 ${course.courseTitle || course.courseId}`);
+          sessionStorage.removeItem(bounceKey);
+          recordTaskScan('uncertain');
+          advanceTaskCourse(readJson(TASK_RESULTS_KEY, []));
+          return;
+        }
+        if (bounce === 1) {
+          progress(`任务：页面离开课程，返回 ${course.courseTitle || course.courseId}`);
+        }
+        go(taskCourseUrl(course));
+        return;
+      }
+      sessionStorage.removeItem('fuckddl:zju:tasks:bounce');
+
+      const allowEmpty = attempts >= 18;
+      const extracted = extractTasksOnHomeworkPage(course, allowEmpty);
+      const stats = extracted?.stats || {};
+      const statLine =
+        `ctrl${stats.controller ? 1 : 0}/row${stats.rowCount ?? 0}` +
+        `/ddl${stats.datedCount ?? 0}/empty${stats.explicitEmpty ? 1 : 0}` +
+        `/loading${stats.loading ? 1 : 0}/${stats.source || 'none'}`;
+      if (!extracted || extracted.tasks === null) {
+        attempts += 1;
+        if (attempts === 1) {
+          progress(
+            `任务：打开 ${course.courseTitle || course.courseId} 作业页，等待作业列表…`
+          );
+        } else if (attempts % 5 === 0) {
+          progress(
+            `任务：${course.courseTitle || course.courseId} 列表等待 ${attempts} · ${statLine}`
+          );
+        }
+        if (attempts < 30) {
+          setTimeout(inspect, 400);
         } else {
-          progress(`任务：${course.courseTitle || course.courseId} 无作业，跳过`);
-          advanceCourseOrFinish(readJson(RESULTS_KEY, []));
+          recordTaskScan('uncertain');
+          progress(
+            `任务：${course.courseTitle || course.courseId} 作业列表未就绪，标记读取不确定 · ${statLine}`
+          );
+          advanceTaskCourse(readJson(TASK_RESULTS_KEY, []));
         }
         return;
       }
 
-      const tasks = summaries.flatMap((summary) => {
-        const ownTxt = normalize(summary.innerText || summary.textContent);
-        const container = summary.closest?.('[class*="activity"], li, tr, section, div') || summary.parentElement || summary;
-        const containerText = normalize(container.innerText || container.textContent);
-        // Prefer container when it carries the deadline line.
-        const text = /结束时间|时间\s*[:：]|已交|已结束|未交|\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(ownTxt)
-          ? ownTxt
-          : containerText;
-        if (/课件|查看文件|知识图谱|公告/.test(text) && !/作业|Lab|Homework|实验/i.test(text)) {
-          return [];
-        }
-        const explicitTitle = normalize(
-          summary.querySelector(
-            '.title, .activity-title, [ng-bind*="title"], h3, h4, a[href*="learning-activity"], a[href*="full-screen"]'
-          )?.textContent
-        );
-        const title = cleanTaskTitle(explicitTitle, text);
-        if (!title) return [];
-        // Need a deadline somewhere or it is not a DDL task.
-        if (!/\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(text) && !/\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(title)) {
-          return [];
-        }
-        const activity = activityLink(container, course);
-        return [{
-          courseId: course.courseId,
-          courseTitle: course.courseTitle,
-          courseUrl: course.courseUrl || `${location.origin}/course/${course.courseId}/content`,
-          ...activity,
-          title,
-          text: text.slice(0, 400)
-        }];
-      });
-      const results = readJson(RESULTS_KEY, []);
-      const keys = new Set(results.map((item) =>
-        `${item.courseId}|${item.title}|${item.text}`
-      ));
+      recordTaskScan('confirmed');
+      const tasks = extracted.tasks || [];
+      const results = readJson(TASK_RESULTS_KEY, []);
+      const keys = new Set(results.map((item) => `${item.courseId}|${item.title}|${item.text}`));
       let added = 0;
       for (const task of tasks) {
         const key = `${task.courseId}|${task.title}|${task.text}`;
@@ -1742,86 +1736,38 @@ const EXTRACT_SCRIPT: &str = r#"
         results.push(task);
         added += 1;
       }
-      sessionStorage.setItem(RESULTS_KEY, JSON.stringify(results.slice(0, 200)));
-      progress(`任务：${course.courseTitle || course.courseId} → +${added} 条（累计${results.length}）`);
-      advanceCourseOrFinish(results);
+      sessionStorage.setItem(TASK_RESULTS_KEY, JSON.stringify(results.slice(0, 200)));
+      if (extracted.confirmedEmpty) {
+        progress(
+          `任务：${course.courseTitle || course.courseId} 已确认作业列表为空 · ${statLine}`
+        );
+      } else {
+        progress(
+          `任务：${course.courseTitle || course.courseId} 列表${stats.rowCount ?? 0}条` +
+          ` / DDL候选${tasks.length}条 → +${added}（累计${results.length}） · ${statLine}`
+        );
+      }
+      advanceTaskCourse(results);
     };
     inspect();
   };
-
-  const scanActivity = () => {
-    const activityQueue = readJson(ACTIVITY_QUEUE_KEY, []);
-    const index = Number(sessionStorage.getItem(ACTIVITY_INDEX_KEY) || 0);
-    const activity = activityQueue[index];
-    if (!activity) {
-      finish(readJson(RESULTS_KEY, []));
-      return;
-    }
-    let attempts = 0;
-    const inspect = () => {
-      const detailText = normalize(document.body?.innerText);
-      const expectedIdLoaded = activityIdFromUrl(location.href) === activity.activityId;
-      const titlePrefix = normalize(activity.title).slice(0, 12);
-      const pageReady = expectedIdLoaded && Boolean(
-        (titlePrefix && detailText.includes(titlePrefix)) ||
-        /作业内容|我的作业|最终成绩|交付历史与批改记录/.test(detailText)
-      );
-      if (!pageReady && attempts < 12) {
-        attempts += 1;
-        setTimeout(inspect, 250);
-        return;
-      }
-
-      const results = readJson(RESULTS_KEY, []);
-      const resultIndex = results.findIndex((item) =>
-        item.courseId === activity.courseId && item.activityId === activity.activityId
-      );
-      if (pageReady && resultIndex >= 0) {
-        results[resultIndex] = {
-          ...results[resultIndex],
-          ...gradeMeta(detailText, results[resultIndex].text)
-        };
-        sessionStorage.setItem(RESULTS_KEY, JSON.stringify(results.slice(0, 200)));
-      }
-
-      const nextIndex = index + 1;
-      if (nextIndex >= activityQueue.length) {
-        finish(results);
-        return;
-      }
-      sessionStorage.setItem(ACTIVITY_INDEX_KEY, String(nextIndex));
-      const next = activityQueue[nextIndex];
-      try {
-        const nextUrl = new URL(next.activityUrl, location.origin);
-        if (nextUrl.origin === location.origin && nextUrl.pathname === location.pathname) {
-          go(nextUrl.href);
-          setTimeout(scanActivity, 450);
-          return;
-        }
-      } catch {
-        // Let normal navigation validation handle malformed values.
-      }
-      go(next.activityUrl);
-    };
-    inspect();
-  };
-
-  const ensureQueueFromSeed = () => {
-    if (sessionStorage.getItem(QUEUE_KEY)) return true;
+  const ensureTaskQueueFromSeed = () => {
+    if (sessionStorage.getItem(TASK_QUEUE_KEY)) return true;
     const seed = readJson(COURSE_SEED_KEY, []);
     if (seed.length === 0) return false;
-    sessionStorage.setItem(QUEUE_KEY, JSON.stringify(seed));
-    sessionStorage.setItem(RESULTS_KEY, sessionStorage.getItem(RESULTS_KEY) || '[]');
-    sessionStorage.setItem(INDEX_KEY, sessionStorage.getItem(INDEX_KEY) || '0');
-    sessionStorage.setItem(ACTIVITY_QUEUE_KEY, sessionStorage.getItem(ACTIVITY_QUEUE_KEY) || '[]');
-    sessionStorage.setItem(ACTIVITY_INDEX_KEY, sessionStorage.getItem(ACTIVITY_INDEX_KEY) || '0');
+    startTaskQueue(seed.map((course) => ({ ...course, courseUrl: taskCourseUrl(course) })));
     return true;
   };
-
+  const ensureGradeQueueFromSeed = () => {
+    if (sessionStorage.getItem(GRADE_QUEUE_KEY)) return true;
+    const seed = readJson(COURSE_SEED_KEY, []);
+    if (seed.length === 0) return false;
+    startGradeQueue(seed.map((course) => ({ ...course, courseUrl: gradeCourseUrl(course) })));
+    return true;
+  };
   afterDomReady(() => {
     if (location.pathname === '/user/courses' || location.pathname === '/user/index') {
       const modeParam = new URLSearchParams(location.search).get('fuckddl-sync');
-      // Query param always wins when present (fresh sync). Otherwise keep session mode.
       if (modeParam === 'grades' || modeParam === 'tasks' || modeParam === 'courses') {
         sessionStorage.setItem(MODE_KEY, modeParam);
       } else if (!sessionStorage.getItem(MODE_KEY)) {
@@ -1830,36 +1776,35 @@ const EXTRACT_SCRIPT: &str = r#"
       scanCourses();
       return;
     }
-    // Course content pages
-    if (/^\/course\/\d+/.test(location.pathname)) {
-      if (/learning-activity/.test(location.pathname + location.hash)) {
-        // Bounce back to content — never scrape detail pages.
-        const queue = readJson(QUEUE_KEY, []);
-        const index = Number(sessionStorage.getItem(INDEX_KEY) || 0);
-        const course = queue[index];
-        if (course) {
-          go(course.courseUrl || `${location.origin}/course/${course.courseId}/content`);
-        }
+    if (!/^\/course\/\d+/.test(location.pathname)) return;
+
+    const mode = readMode();
+    if (mode === 'grades') {
+      if (!ensureGradeQueueFromSeed()) return;
+      const queue = readJson(GRADE_QUEUE_KEY, []);
+      const index = Number(sessionStorage.getItem(GRADE_INDEX_KEY) || 0);
+      const course = queue[index];
+      if (!course) return finishGrades(readJson(GRADE_RESULTS_KEY, []));
+      if (/learning-activity/.test(location.pathname + location.hash) || !isScoreRoute()) {
+        go(gradeCourseUrl(course));
         return;
       }
-      if (!ensureQueueFromSeed()) return;
-      if (!sessionStorage.getItem(MODE_KEY)) sessionStorage.setItem(MODE_KEY, 'tasks');
-      // Grades/tasks both use /content for summaries.
-      if (!/\/content/.test(location.pathname)) {
-        const queue = readJson(QUEUE_KEY, []);
-        const index = Number(sessionStorage.getItem(INDEX_KEY) || 0);
-        const course = queue[index];
-        const id = course?.courseId || (location.pathname.match(/\/course\/(\d+)/) || [])[1];
-        if (id) {
-          go(`${location.origin}/course/${id}/content`);
-          return;
-        }
-      }
-      scanCourse();
+      scanGradeCourse();
       return;
     }
-  });
-})();
+
+    sessionStorage.setItem(MODE_KEY, 'tasks');
+    if (!ensureTaskQueueFromSeed()) return;
+    const queue = readJson(TASK_QUEUE_KEY, []);
+    const index = Number(sessionStorage.getItem(TASK_INDEX_KEY) || 0);
+    const course = queue[index];
+    if (!course) return finishTasks(readJson(TASK_RESULTS_KEY, []));
+    if (/learning-activity/.test(location.pathname + location.hash) || !/\/homework(?:\/|$)/.test(location.pathname)) {
+      go(taskCourseUrl(course));
+      return;
+    }
+    scanTaskCourse();
+  });})();
 "#;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -2191,14 +2136,15 @@ fn seed_script(
     force_reset: bool,
 ) -> Result<String, String> {
     // Also wipe grade-scroll keys so a prior grades crawl cannot poison task mode.
-    let clear = "['fuckddl:zju:queue','fuckddl:zju:results','fuckddl:zju:index',\
+    let clear = "['fuckddl:zju:tasks:queue','fuckddl:zju:tasks:results','fuckddl:zju:tasks:index','fuckddl:zju:tasks:activity-queue','fuckddl:zju:tasks:activity-index','fuckddl:zju:tasks:scan-stats','fuckddl:zju:tasks:catalog-accum','fuckddl:zju:tasks:catalog-page','fuckddl:zju:tasks:catalog-wait','fuckddl:zju:tasks:catalog-fp','fuckddl:zju:grades:queue','fuckddl:zju:grades:results','fuckddl:zju:grades:index',\
+        'fuckddl:zju:queue','fuckddl:zju:results','fuckddl:zju:index',\
         'fuckddl:zju:activity-queue','fuckddl:zju:activity-index',\
         'fuckddl:zju:course-seed','fuckddl:zju:courses-accum','fuckddl:zju:courses-page',\
         'fuckddl:zju:courses-wait','fuckddl:zju:courses-phase','fuckddl:zju:courses-fp',\
         'fuckddl:zju:courses-method','fuckddl:zju:courses-size']\
         .forEach((k) => sessionStorage.removeItem(k));\
         try { Object.keys(sessionStorage).forEach((k) => {\
-          if (k.indexOf('fuckddl:zju:grade-') === 0) sessionStorage.removeItem(k);\
+          if (k.indexOf('fuckddl:zju:grades:') === 0 || k.indexOf('fuckddl:zju:grade-') === 0) sessionStorage.removeItem(k);\
         }); } catch (_) {}";
     if mode == "grades" {
         let queue = courses
@@ -2208,7 +2154,7 @@ fn seed_script(
                 Some(serde_json::json!({
                     "courseId": course.course_id,
                     "courseTitle": course.course_title,
-                    "courseUrl": course.course_url,
+                    "courseUrl": grade_course_url(&course.course_id),
                 }))
             })
             .collect::<Vec<_>>();
@@ -2222,24 +2168,20 @@ fn seed_script(
                 "try {{ {clear} \
                  sessionStorage.setItem('fuckddl:zju:mode', 'grades'); \
                  sessionStorage.setItem('fuckddl:zju:course-seed', {literal}); \
-                 sessionStorage.setItem('fuckddl:zju:queue', {literal}); \
-                 sessionStorage.setItem('fuckddl:zju:results', '[]'); \
-                 sessionStorage.setItem('fuckddl:zju:index', '0'); \
-                 sessionStorage.setItem('fuckddl:zju:activity-queue', '[]'); \
-                 sessionStorage.setItem('fuckddl:zju:activity-index', '0'); \
+                 sessionStorage.setItem('fuckddl:zju:grades:queue', {literal}); \
+                 sessionStorage.setItem('fuckddl:zju:grades:results', '[]'); \
+                 sessionStorage.setItem('fuckddl:zju:grades:index', '0'); \
                  }} catch (_) {{}}"
             ));
         }
         return Ok(format!(
             "try {{ \
-             if (!sessionStorage.getItem('fuckddl:zju:queue')) {{ \
+             if (!sessionStorage.getItem('fuckddl:zju:grades:queue')) {{ \
                sessionStorage.setItem('fuckddl:zju:mode', 'grades'); \
                sessionStorage.setItem('fuckddl:zju:course-seed', {literal}); \
-               sessionStorage.setItem('fuckddl:zju:queue', {literal}); \
-               sessionStorage.setItem('fuckddl:zju:results', '[]'); \
-               sessionStorage.setItem('fuckddl:zju:index', '0'); \
-               sessionStorage.setItem('fuckddl:zju:activity-queue', '[]'); \
-               sessionStorage.setItem('fuckddl:zju:activity-index', '0'); \
+               sessionStorage.setItem('fuckddl:zju:grades:queue', {literal}); \
+               sessionStorage.setItem('fuckddl:zju:grades:results', '[]'); \
+               sessionStorage.setItem('fuckddl:zju:grades:index', '0'); \
              }} \
              }} catch (_) {{}}"
         ));
@@ -2339,49 +2281,74 @@ mod tests {
     }
 
     #[test]
-    fn course_summary_uses_the_three_explicit_grade_states() {
-        assert!(EXTRACT_SCRIPT.contains("summary.match(/已交(?:付)?\\s*"));
-        assert!(EXTRACT_SCRIPT.contains("if (hasDelivery) return { gradeStatus: 'unpublished' }"));
-        assert!(EXTRACT_SCRIPT.contains("if (ended && (explicitlyMissing || !hasDelivery))"));
-        assert!(EXTRACT_SCRIPT.contains("MAX_COURSES = 20"));
-        assert!(EXTRACT_SCRIPT.contains("isHomeworkLikeText"));
-        assert!(EXTRACT_SCRIPT.contains("结束时间"));
-        assert!(EXTRACT_SCRIPT.contains("MODE_KEY"));
-        assert!(EXTRACT_SCRIPT.contains("COURSE_SEED_KEY"));
-        assert!(EXTRACT_SCRIPT.contains("zju-courses"));
-        assert!(EXTRACT_SCRIPT.contains("mode === 'courses'"));
-        assert!(EXTRACT_SCRIPT.contains("semester"));
-        assert!(EXTRACT_SCRIPT.contains("advanceCourseOrFinish"));
-        assert!(EXTRACT_SCRIPT.contains("enqueueHref"));
-        assert!(EXTRACT_SCRIPT.contains("const go = (url)"));
-        assert!(EXTRACT_SCRIPT.contains("isGradeChipRow"));
-        assert!(EXTRACT_SCRIPT.contains("learning-activity"));
-        assert!(EXTRACT_SCRIPT.contains("pageIndex"));
-        assert!(EXTRACT_SCRIPT.contains("误入列表页"));
-        assert!(EXTRACT_SCRIPT.contains("任务："));
-        assert!(EXTRACT_SCRIPT.contains("从课程列表取得"));
-        assert!(EXTRACT_SCRIPT.contains("无作业，跳过"));
-        // Course hop must be queued after progress (not a raw location.href race).
-        assert!(EXTRACT_SCRIPT.contains(
-            "go(next.courseUrl || `${location.origin}/course/${next.courseId}/content`)"
-        ));
-        assert!(EXTRACT_SCRIPT.contains("scrollCatalogToPager"));
-        assert!(EXTRACT_SCRIPT.contains("zju-progress"));
-        assert!(EXTRACT_SCRIPT.contains("翻页"));
-        assert!(EXTRACT_SCRIPT.contains("页码输入"));
-        assert!(EXTRACT_SCRIPT.contains("catalogPageUrl"));
-        assert!(EXTRACT_SCRIPT.contains("hard-reload"));
-        assert!(EXTRACT_SCRIPT.contains("openItemsPerPageMenu"));
-        assert!(EXTRACT_SCRIPT.contains("pickLargestPageSizeOption"));
-        assert!(EXTRACT_SCRIPT.contains("findItemsPerPageTrigger"));
-        assert!(EXTRACT_SCRIPT.contains("项/页"));
-        assert!(EXTRACT_SCRIPT.contains("cleanTaskTitle"));
-        assert!(EXTRACT_SCRIPT.contains("extractGradesOnContentPage"));
-        assert!(EXTRACT_SCRIPT.contains("gradeStatusFromListText"));
-        assert!(EXTRACT_SCRIPT.contains("成绩："));
-        assert!(EXTRACT_SCRIPT.contains("learning-activity"));
-    }
+    fn extract_script_keeps_task_and_grade_pipelines_separate() {
+        assert!(EXTRACT_SCRIPT.contains("const taskCourseUrl"));
+        assert!(EXTRACT_SCRIPT.contains("/homework`"));
+        assert!(EXTRACT_SCRIPT.contains("const gradeCourseUrl"));
+        assert!(EXTRACT_SCRIPT.contains("/score#/`"));
+        assert!(EXTRACT_SCRIPT.contains("TASK_QUEUE_KEY"));
+        assert!(EXTRACT_SCRIPT.contains("GRADE_QUEUE_KEY"));
+        assert!(EXTRACT_SCRIPT.contains("advanceTaskCourse"));
+        assert!(EXTRACT_SCRIPT.contains("advanceGradeCourse"));
+        assert!(!EXTRACT_SCRIPT.contains("courseUrlForMode"));
+        assert!(!EXTRACT_SCRIPT.contains("scanCoursePipeline"));
+        assert!(!EXTRACT_SCRIPT.contains("extractGradesOnContentPage"));
 
+        let grade_start = EXTRACT_SCRIPT.find("const scanGradeCourse").unwrap();
+        let task_start = EXTRACT_SCRIPT.find("const scanTaskCourse").unwrap();
+        let ensure_start = EXTRACT_SCRIPT
+            .find("const ensureTaskQueueFromSeed")
+            .unwrap();
+        let grade_pipeline = &EXTRACT_SCRIPT[grade_start..task_start];
+        let task_pipeline = &EXTRACT_SCRIPT[task_start..ensure_start];
+        assert!(grade_pipeline.contains("GRADE_QUEUE_KEY"));
+        assert!(grade_pipeline.contains("extractGradesOnScorePage"));
+        assert!(!grade_pipeline.contains("TASK_QUEUE_KEY"));
+        assert!(!grade_pipeline.contains("extractTasksOnHomeworkPage"));
+        assert!(task_pipeline.contains("TASK_QUEUE_KEY"));
+        assert!(task_pipeline.contains("extractTasksOnHomeworkPage"));
+        assert!(!task_pipeline.contains("GRADE_QUEUE_KEY"));
+        assert!(!task_pipeline.contains("extractGradesOnScorePage"));
+
+        assert!(EXTRACT_SCRIPT.contains("TASK_SCAN_STATS_KEY"));
+        assert!(EXTRACT_SCRIPT.contains("TASK_CATALOG_ACCUM_KEY"));
+        assert!(EXTRACT_SCRIPT.contains("TASK_CATALOG_PAGE_KEY"));
+        assert!(EXTRACT_SCRIPT.contains("MAX_TASK_COURSES"));
+        assert!(EXTRACT_SCRIPT.contains("任务：读取课程第${page}页"));
+        assert!(EXTRACT_SCRIPT.contains("go(catalogPageUrl(page + 1, 'tasks'))"));
+        assert!(EXTRACT_SCRIPT
+            .contains("Do not start the homework queue until every catalog page has been read."));
+        assert!(EXTRACT_SCRIPT.contains("作业列表未就绪，标记读取不确定"));
+        assert!(EXTRACT_SCRIPT.contains("保留已有任务并报告读取失败"));
+        assert!(EXTRACT_SCRIPT.contains("signal('zju-extract-failed')"));
+        assert!(EXTRACT_SCRIPT.contains("enqueueHref"));
+        assert!(EXTRACT_SCRIPT.contains("zju-courses"));
+        assert!(EXTRACT_SCRIPT.contains("scrollCatalogToPager"));
+        assert!(EXTRACT_SCRIPT.contains("collectScoreActivitiesFromScopes"));
+        assert!(EXTRACT_SCRIPT.contains("activity in category.activities"));
+        assert!(EXTRACT_SCRIPT.contains("HomeworkListController"));
+        assert!(EXTRACT_SCRIPT.contains("homework in homeworkList track by homework.id"));
+        assert!(EXTRACT_SCRIPT.contains("[ng-bind=\"homework.title\"]"));
+        assert!(EXTRACT_SCRIPT.contains("taskPageLoading"));
+        assert!(EXTRACT_SCRIPT.contains("confirmedEmpty"));
+    }
+    #[test]
+    fn task_and_grade_seed_state_are_isolated() {
+        let task_seed = seed_script("tasks", &[], true).unwrap();
+        assert!(task_seed.contains("setItem('fuckddl:zju:mode', 'tasks')"));
+        assert!(!task_seed.contains("setItem('fuckddl:zju:grades:queue'"));
+
+        let courses = vec![ZjuCourseSelection {
+            course_id: "99089".into(),
+            course_title: "信息安全课程综合实践".into(),
+            course_url: None,
+            semester: Some("2025-2026春夏".into()),
+        }];
+        let grade_seed = seed_script("grades", &courses, true).unwrap();
+        assert!(grade_seed.contains("setItem('fuckddl:zju:grades:queue'"));
+        assert!(grade_seed.contains("setItem('fuckddl:zju:grades:results', '[]')"));
+        assert!(!grade_seed.contains("setItem('fuckddl:zju:tasks:queue'"));
+    }
     #[test]
     fn zju_task_and_grade_urls_carry_mode() {
         let tasks = Url::parse(
@@ -2421,7 +2388,7 @@ mod tests {
                 .as_deref(),
             Some("tasks")
         );
-        assert!(grades.as_str().contains("/course/99089/content"));
+        assert!(grades.as_str().contains("/course/99089/score#/"));
         assert_eq!(
             courses
                 .query_pairs()

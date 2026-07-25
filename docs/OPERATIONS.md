@@ -17,12 +17,12 @@
 ### 1.1 当前 Windows Alpha
 
 - 便携文件：`apps/desktop/src-tauri/target/release/fuck-ddl.exe`。
-- 当前已验收 NSIS 安装包：`apps/desktop/src-tauri/target/release/bundle/nsis/Fuck DDL_0.2.0_x64-setup.exe`。
-- 当前构建：Tauri 2 Release、未签名 NSIS 安装器，供本机 Alpha 验收。
+- P5A 本地候选：`apps/desktop/src-tauri/target/release/bundle/nsis/Fuck DDL_0.3.0_x64-setup.exe`；本轮只完成构建与核验，未安装。
+- 当前构建：Tauri 2 Release、未签名 NSIS x64 安装器；`0.3.0` 已锁定，形成审阅后的明确提交后仍需从该提交重建。
 - 运行方式：优先安装后从开始菜单运行；本机安装路径为 `C:\Users\zhu\Fuck DDL`。
 - 重新构建：在已加载 MSVC 环境且 Rust/Cargo 可用的终端运行 `pnpm desktop:build`。
 - 当前数据以 WebView localStorage 为主，并由应用私有 SQLite 镜像和本机 JSON 自动备份保护；仍不视为云端多设备数据源。
-- 当前 0.2.0 安装包：SHA256 `C179DDB6FF47496441606CBA7B88ED7DCFA74676BFD96E04B834D12C16D1EFA2`（2026-07-15 修复更新闪退/任务快路径）。
+- 2026-07-25 P5A 0.3.0 候选 SHA256：`33727A7F9339F556A9ED3492511EBC28CCD5446845FE7BEB4BEE097D359362CE`；Authenticode 状态为 `NotSigned`。完整门禁与阻塞项见 `RELEASE_CHECKLIST.md`。
 - 主窗口关闭会隐藏到托盘；使用托盘菜单“显示 Fuck DDL”恢复，选择“彻底退出”才停止进程。重复启动会唤醒现有窗口。
 - 通知插件已进入安装版；Windows 原生无声 Toast 已在安装版中完成可见性验收。
 

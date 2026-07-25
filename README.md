@@ -7,14 +7,15 @@
 
 ## 当前状态
 
-当前源码版本为 `0.2.0`，已安装桌面版可运行，单实例、托盘、动态 Edge 桥和 JSON 自动备份已通过本机冒烟。P0 工程基线已完成，P1 桌面可靠性已完成用户验收，P2 本地门禁已通过，等待 PTA/ZJU 真实用户验收。
+当前源码版本为 `0.3.0`，已生成未签名的 Windows x64 本地候选，本轮未安装该候选。现有已安装 0.2.0 的单实例、托盘、动态 Edge 桥和 JSON 自动备份已通过本机冒烟。P0 工程基线、P1 桌面可靠性、P2 PTA/ZJU 联合验收、P3 Edge 全屏验收和 P4 架构治理均已通过；P5A 本地发布准备已完成；P5B 云端、P5C 签名和 P5D 发布仍等待单独授权。
 
-当前质量基线：Prettier、ESLint、TypeScript、Schema 契约、领域 24/24、Web 123/123、桌面 Rust 32/32、Native Host 6/6、Edge 冒烟/构建和生产构建均通过。
+当前质量基线：Web 24 个测试文件、152/152，ESLint、TypeScript、Prettier、Vite 生产构建、桌面 Rust 33/33、Native Host 6/6、Edge 冒烟/构建和标准桌面构建均通过。
 
-- SQLite 空库根因已定位为缺少写入权限，P1 候选修复与自动化验证已通过，待实机落盘验收；
-- 当前源码目录没有可交付的 0.2.0 NSIS 安装包；
-- PTA/ZJU 真实成绩与 Edge 全屏 10 分钟仍需用户实机验收；
-- 云端、OAuth、签名和公开发布尚未授权。
+- P4 第一批已抽出 `useAppPersistentState`，降低 `App.jsx` 的持久化状态编排耦合；
+- SQLite 已建立事务 schema、`app_state` repository、`sync_outbox` 和 `sync_cursors` 边界；`sync_outbox` 已具备租约栅栏、成功确认、指数退避、崩溃回收和 8 次终止失败；
+- 离线重放、幂等确认、崩溃恢复和显式冲突策略已通过真实内存 SQLite 演练；P4 自动门禁与用户实机验收均已通过；
+- P5A 已按用户指定的 `0.3.0` 生成未签名 NSIS 本地候选和发布清单；版本冲突已解除，候选仍需从审阅后的明确 Git 提交重建后才具备可复现性；
+- 云端、OAuth、签名和公开发布仍未授权。
 
 权威状态、执行规范和完整历史统一记录在 [codex.md](codex.md)。
 

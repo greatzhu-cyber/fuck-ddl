@@ -32,7 +32,7 @@ import {
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
-import { createInitialTasks, initialGoals } from "./data.js";
+import { useAppPersistentState } from "./app-persistence.js";
 import {
   deadlineHoursUntil,
   distractionRestShare,
@@ -45,22 +45,9 @@ import {
   urgencyMeta,
   workDistractionRate,
 } from "@fuck-ddl/domain";
+import { STORAGE_KEYS, writePersistentState } from "./persistence.js";
 import {
-  isArray,
-  isGoalList,
-  isInboxList,
-  isProjectList,
-  isTodayPlanOrder,
-  isString,
-  isTaskList,
-  STORAGE_KEYS,
-  usePersistentState,
-  writePersistentState,
-} from "./persistence.js";
-import {
-  createFocusState,
   defaultPresets,
-  isFocusState,
   pauseFocus,
   resetForNewDay,
   localDayKey,
@@ -100,23 +87,16 @@ import {
   readSupabaseConfig,
   signInWithGithub,
 } from "./auth.js";
-import {
-  migrateTaskSourceNames,
-  SOURCE_PTA,
-  SOURCE_ZJU,
-} from "./source-names.js";
+import { SOURCE_PTA, SOURCE_ZJU } from "./source-names.js";
 import {
   appendCompletionRecords,
   completionRecordsFromSync,
   createCompletionRecord,
-  isCompletionHistory,
 } from "./completion-history.js";
 import {
   addDailyWorkSecond,
   calculateTodayMetrics,
-  createDailyWork,
   focusEntriesForLocalDay,
-  isDailyWork,
   resetDailyWork,
 } from "./daily-metrics.js";
 import {
@@ -131,13 +111,8 @@ import {
 } from "./desktop-sqlite.js";
 import { GradebookView } from "./GradebookView.jsx";
 import {
-  DEFAULT_GRADE_SYNC_SETTINGS,
   finalPtaGradeIds,
-  isGradeRecordList,
-  isGradeSyncSettings,
-  isZjuCourseCatalog,
   mergeGradeRecords,
-  normalizeGradeSyncSettings,
   normalizeZjuCourseCatalog,
 } from "./grades.js";
 
@@ -971,22 +946,42 @@ function dateTimeLocalValue(value) {
 }
 
 export function App() {
-  const [tasks, setTasks] = usePersistentState(
-    STORAGE_KEYS.tasks,
-    createInitialTasks,
-    isTaskList,
-    migrateTaskSourceNames,
-  );
-  const [goals, setGoals] = usePersistentState(
-    STORAGE_KEYS.goals,
-    initialGoals,
-    isGoalList,
-  );
-  const [projects, setProjects] = usePersistentState(
-    STORAGE_KEYS.projects,
-    [],
-    isProjectList,
-  );
+  const {
+    activeTaskId,
+    completionHistory,
+    customPresets,
+    dailyWork,
+    focusHistory,
+    focusState,
+    goals,
+    gradeRecords,
+    gradeSyncSettings,
+    inbox,
+    lastAutomaticBackupDay,
+    lastSourceSyncAt,
+    permanentWhitelist,
+    projects,
+    setActiveTaskId,
+    setCompletionHistory,
+    setCustomPresets,
+    setDailyWork,
+    setFocusHistory,
+    setFocusState,
+    setGoals,
+    setGradeRecords,
+    setGradeSyncSettings,
+    setInbox,
+    setLastAutomaticBackupDay,
+    setLastSourceSyncAt,
+    setPermanentWhitelist,
+    setProjects,
+    setTasks,
+    setTodayPlanOrder,
+    setZjuCourseCatalog,
+    tasks,
+    todayPlanOrder,
+    zjuCourseCatalog,
+  } = useAppPersistentState();
   const [activeView, setActiveView] = useState("deadlines");
   const [search, setSearch] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1003,79 +998,7 @@ export function App() {
   const [completedSession, setCompletedSession] = useState(null);
   const [progressDraft, setProgressDraft] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
-  const [activeTaskId, setActiveTaskId] = usePersistentState(
-    STORAGE_KEYS.activeTaskId,
-    "",
-    isString,
-  );
-  const [focusState, setFocusState] = usePersistentState(
-    STORAGE_KEYS.focusState,
-    createFocusState,
-    isFocusState,
-  );
-  const [customPresets, setCustomPresets] = usePersistentState(
-    STORAGE_KEYS.customPresets,
-    [],
-    isArray,
-  );
-  const [focusHistory, setFocusHistory] = usePersistentState(
-    STORAGE_KEYS.focusHistory,
-    [],
-    isArray,
-  );
-  const [completionHistory, setCompletionHistory] = usePersistentState(
-    STORAGE_KEYS.completionHistory,
-    [],
-    isCompletionHistory,
-  );
-  const [lastSourceSyncAt, setLastSourceSyncAt] = usePersistentState(
-    STORAGE_KEYS.lastSourceSyncAt,
-    null,
-    (value) => value === null || typeof value === "string",
-  );
-  const [permanentWhitelist, setPermanentWhitelist] = usePersistentState(
-    STORAGE_KEYS.permanentWhitelist,
-    ["pintia.cn", "courses.zju.edu.cn"],
-    isArray,
-  );
-  const [inbox, setInbox] = usePersistentState(
-    STORAGE_KEYS.inbox,
-    [],
-    isInboxList,
-  );
-  const [todayPlanOrder, setTodayPlanOrder] = usePersistentState(
-    STORAGE_KEYS.todayPlanOrder,
-    () => ({ dayKey: localDayKey(), taskIds: [] }),
-    isTodayPlanOrder,
-  );
-  const [gradeRecords, setGradeRecords] = usePersistentState(
-    STORAGE_KEYS.gradeRecords,
-    [],
-    isGradeRecordList,
-  );
-  const [gradeSyncSettings, setGradeSyncSettings] = usePersistentState(
-    STORAGE_KEYS.gradeSyncSettings,
-    DEFAULT_GRADE_SYNC_SETTINGS,
-    isGradeSyncSettings,
-    (value) => ({
-      ...DEFAULT_GRADE_SYNC_SETTINGS,
-      ...normalizeGradeSyncSettings(value),
-    }),
-  );
-  const [zjuCourseCatalog, setZjuCourseCatalog] = usePersistentState(
-    STORAGE_KEYS.zjuCourseCatalog,
-    [],
-    isZjuCourseCatalog,
-    normalizeZjuCourseCatalog,
-  );
   const [loadingZjuCourses, setLoadingZjuCourses] = useState(false);
-  const [lastAutomaticBackupDay, setLastAutomaticBackupDay] =
-    usePersistentState(STORAGE_KEYS.lastAutomaticBackupDay, "", isString);
-  const [dailyWork, setDailyWork] = usePersistentState(
-    STORAGE_KEYS.dailyWork,
-    createDailyWork,
-    isDailyWork,
-  );
   const [nowMs, setNowMs] = useState(Date.now);
   const workedSeconds = dailyWork.seconds;
   const [accountOpen, setAccountOpen] = useState(false);

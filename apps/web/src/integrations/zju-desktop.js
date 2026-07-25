@@ -10,7 +10,8 @@ const LOGIN_REQUIRED_EVENT = "fuck-ddl:zju-login-required";
 const EXTRACT_FAILED_EVENT = "fuck-ddl:zju-extract-failed";
 /** Browser-side event so App.jsx can show live ZJU crawl lines during any mode. */
 export const ZJU_PROGRESS_UI_EVENT = "fuck-ddl:zju-progress-ui";
-const TASK_SYNC_TIMEOUT_MS = 120_000;
+// Full task sync walks every catalog page and can scan more than twenty courses.
+const TASK_SYNC_TIMEOUT_MS = 300_000;
 const GRADE_SYNC_TIMEOUT_MS = 180_000;
 const COURSES_SYNC_TIMEOUT_MS = 120_000;
 

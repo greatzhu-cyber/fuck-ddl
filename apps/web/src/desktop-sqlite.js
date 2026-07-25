@@ -1,20 +1,17 @@
 import Database from "@tauri-apps/plugin-sql";
 import { isTauriDesktop } from "./integrations/pintia-desktop.js";
-
-const DATABASE_URL = "sqlite:fuck-ddl.db";
-const STATE_PREFIX = "fuck-ddl:v1:";
-const CREATE_STATE_TABLE =
-  "CREATE TABLE IF NOT EXISTS app_state (state_key TEXT PRIMARY KEY NOT NULL, encoded_value TEXT NOT NULL, updated_at TEXT NOT NULL)";
-const SELECT_STATE =
-  "SELECT state_key, encoded_value FROM app_state ORDER BY updated_at ASC";
-
-const UPSERT_STATE =
-  "INSERT INTO app_state (state_key, encoded_value, updated_at) VALUES (?, ?, ?) ON CONFLICT(state_key) DO UPDATE SET encoded_value = excluded.encoded_value, updated_at = excluded.updated_at";
+import {
+  createSqliteRepository,
+  DATABASE_URL,
+  STATE_PREFIX,
+} from "./storage/sqlite-repository.js";
+import { replayOutbox } from "./storage/outbox-replay.js";
 
 export const DESKTOP_DATABASE_STATUS_EVENT = "fuck-ddl:desktop-database-status";
 
 let databasePromise = null;
 let writeQueue = Promise.resolve();
+let replayPromise = null;
 let databaseStatus = createInitialStatus();
 let knownStateKeys = new Set();
 
@@ -76,11 +73,13 @@ function collectLocalState(storage) {
   for (let index = 0; index < storage.length; index += 1) {
     const key = storage.key(index);
     const encodedValue = key ? storage.getItem(key) : null;
-    if (isVersionedState(key, encodedValue)) {
-      entries.push([key, encodedValue]);
-    }
+    if (isVersionedState(key, encodedValue)) entries.push([key, encodedValue]);
   }
   return entries;
+}
+
+function repositoryFor(database, now) {
+  return createSqliteRepository(database, { now });
 }
 
 export function getDesktopDatabaseStatus() {
@@ -90,6 +89,7 @@ export function getDesktopDatabaseStatus() {
 export function resetDesktopDatabaseForTests() {
   databasePromise = null;
   writeQueue = Promise.resolve();
+  replayPromise = null;
   databaseStatus = createInitialStatus();
   knownStateKeys = new Set();
 }
@@ -99,7 +99,11 @@ export async function openDesktopDatabase({ load = Database.load } = {}) {
   if (!databasePromise) {
     databasePromise = load(DATABASE_URL)
       .then(async (database) => {
-        await database.execute(CREATE_STATE_TABLE);
+        const repository = repositoryFor(database);
+        await repository.ensureSchema();
+        if (typeof database.select === "function") {
+          await repository.recoverStaleOutbox();
+        }
         return database;
       })
       .catch((error) => {
@@ -118,9 +122,8 @@ export async function restoreDesktopState({
   try {
     const database = await openDatabase();
     if (!database) return { restored: 0, skipped: true };
-    const rows = await database.select(SELECT_STATE);
-    const restored = restoreRows(rows, storage);
-    return { restored, skipped: false };
+    const rows = await repositoryFor(database).selectStateRows();
+    return { restored: restoreRows(rows, storage), skipped: false };
   } catch (error) {
     markDatabaseDegraded();
     throw error;
@@ -143,7 +146,8 @@ export async function bootstrapDesktopState({
       });
     }
 
-    const rows = await database.select(SELECT_STATE);
+    const repository = repositoryFor(database, now);
+    const rows = await repository.selectStateRows();
     const restored = restoreRows(rows, storage);
     const localEntries = collectLocalState(storage);
     knownStateKeys = new Set(
@@ -152,7 +156,7 @@ export async function bootstrapDesktopState({
         .map((row) => row.state_key),
     );
     for (const [key, encodedValue] of localEntries) {
-      await database.execute(UPSERT_STATE, [key, encodedValue, now()]);
+      await repository.upsertState(key, encodedValue, now());
       knownStateKeys.add(key);
     }
     return publishStatus({
@@ -185,13 +189,16 @@ export function persistDesktopState(
       try {
         const database = await openDatabase();
         if (!database) return false;
-        const writtenAt = now();
-        await database.execute(UPSERT_STATE, [key, encodedValue, writtenAt]);
+        await repositoryFor(database, now).upsertState(
+          key,
+          encodedValue,
+          now(),
+        );
         knownStateKeys.add(key);
         publishStatus({
           state: "ready",
           rowCount: Math.max(databaseStatus.rowCount, knownStateKeys.size),
-          lastWriteAt: writtenAt,
+          lastWriteAt: now(),
         });
         return true;
       } catch (error) {
@@ -200,4 +207,84 @@ export function persistDesktopState(
       }
     });
   return writeQueue;
+}
+
+export function enqueueDesktopOutbox(
+  operation,
+  {
+    openDatabase = openDesktopDatabase,
+    now = () => new Date().toISOString(),
+  } = {},
+) {
+  if (!isTauriDesktop()) return Promise.resolve(false);
+  writeQueue = writeQueue
+    .catch(() => undefined)
+    .then(async () => {
+      try {
+        const database = await openDatabase();
+        if (!database) return false;
+        return repositoryFor(database, now).enqueueOutbox(operation);
+      } catch (error) {
+        markDatabaseDegraded();
+        throw error;
+      }
+    });
+  return writeQueue;
+}
+export function replayDesktopOutbox(
+  send,
+  {
+    openDatabase = openDesktopDatabase,
+    now = () => new Date().toISOString(),
+    limit = 50,
+    leaseMs,
+    maxAttempts,
+  } = {},
+) {
+  if (!isTauriDesktop()) {
+    return Promise.resolve({
+      claimed: 0,
+      sent: 0,
+      retried: 0,
+      failed: 0,
+      results: [],
+      skipped: true,
+    });
+  }
+  if (typeof send !== "function") {
+    return Promise.reject(new TypeError("An outbox sender is required"));
+  }
+  if (replayPromise) return replayPromise;
+
+  replayPromise = (async () => {
+    try {
+      const database = await openDatabase();
+      if (!database) {
+        return {
+          claimed: 0,
+          sent: 0,
+          retried: 0,
+          failed: 0,
+          results: [],
+          skipped: true,
+        };
+      }
+      const repository = repositoryFor(database, now);
+      await repository.recoverStaleOutbox({ at: now() });
+      return replayOutbox({
+        repository,
+        send,
+        limit,
+        leaseMs,
+        maxAttempts,
+        at: now,
+      });
+    } catch (error) {
+      markDatabaseDegraded();
+      throw error;
+    } finally {
+      replayPromise = null;
+    }
+  })();
+  return replayPromise;
 }
