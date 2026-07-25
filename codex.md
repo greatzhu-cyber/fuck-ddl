@@ -14,9 +14,9 @@
 - 当前自动化：Prettier、ESLint、TypeScript、11 表 Schema 契约、领域 24/24、Web 24 个测试文件 152/152、桌面 Rust 33/33、Native Host 6/6、两套 Clippy、生产构建和 Edge 冒烟/构建全部通过。
 - P0 已恢复质量基线：修复 3 个过期 ZJU Desktop 测试契约，并统一完成前端与 Rust 格式化。
 - Git 基线：首个可恢复提交为 `f9ada8e`（`chore: establish validated local baseline`）；0.3.0 候选源码提交为 `daad0374d04a62d9dba0943c20d0b256afe2553a`。
-- 桌面实机：已安装 0.2.0 的进程、动态桥、单实例、托盘、窗口唤醒和 JSON 自动备份通过冒烟。
+- 桌面实机：0.3.0 已安装并正常运行；版本注册、单实例、动态桥、SQLite 恢复和正常重启保持均已通过。
 - 数据边界：当前标准候选继续使用 `%APPDATA%\com.fuckddl.desktop\fuck-ddl.db`；P4 SQLite 恢复测试全部使用内存数据库，不写入真实用户数据。
-- 当前产物：0.3.0 未签名 NSIS x64 候选已从 `daad0374d04a62d9dba0943c20d0b256afe2553a` 在干净工作区重建，大小 3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；本轮未安装。
+- 当前产物：0.3.0 未签名 NSIS x64 候选已从 `daad0374d04a62d9dba0943c20d0b256afe2553a` 在干净工作区重建，大小 3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；已完成本机升级安装。
 - 可复现性：候选来源已可追溯，原“工作区不可复现”阻塞已解决；尚未通过两次独立干净重建比较验证 NSIS 的逐字节确定性。
 
 - 授权边界：真实账号、云资源、OAuth、签名、公开发布、重装和系统网络设置仍需单独授权。
@@ -1130,3 +1130,13 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 二进制核验：桌面 EXE SHA256 `BD09E624BE3AA040FB4F6C4FBD8E128EC62CAB0A841724855260EB0EAD04F80E`，FileVersion 与 ProductVersion 均为 `0.3.0`；Native Host SHA256 `4BBC2CCF1E922CE057AC89982883F00F75C170582E84B038B543D141E2B78669`。
 - 可复现性结论：原“工作区不可复现”阻塞已解决，候选可追溯到明确源码提交；本轮没有执行两次独立干净重建的逐字节比较，因此不宣称 NSIS 产物具备逐字节确定性。
 - 边界：未运行 `scripts/finish-local-release.ps1`；未安装、升级或卸载 0.3.0，未停止现有 0.2.0 安装版，未操作 Supabase/OAuth，未签名、上传或公开发布。
+
+### P5A 0.3.0 本机安装与数据恢复完成（2026-07-25）
+
+状态：**0.3.0 已完成本机升级安装、可回滚备份、业务数据恢复和正常重启验收；未进入 P5B/P5C/P5D。**
+
+- 升级前备份：`work/backups/pre-upgrade-0.2.0-to-0.3.0-20260725-233618`，包含提交 `62d7d6d4a0717fea6d38ec350b7def231a237d5e` 的 0.2.0 源码归档、已验收旧安装器 SHA256 `54C226F21D8303ECA4B7B828F8D73A84170875C5B6519B5E11A01C718C69471E`、版本切换前候选 SHA256 `E04ED94F6A10D38AA250879B5C5313B9130A0E8D85648F5DBF61E1E50302A85B`、当前旧程序、SQLite、11 份 JSON 和 Edge Host 状态。24 个清单文件全部通过 SHA256 复核；未复制 PTA/ZJU Cookie 或登录会话。
+- 安装结果：NSIS `/S` 返回 0；安装路径 `C:\Users\zhu\Fuck DDL`，ProductVersion、FileVersion 和卸载注册版本均为 `0.3.0`。安装 EXE SHA256 `16742D85CB867CA4F164158952ABB16C1DF995B1E7BF3DAE455F4B10DCED465F`，与构建 EXE 仅有 Tauri/NSIS 将 `BUNDLE_TYPE_VAR_UNK` 改为 `BUNDLE_TYPE_VAR_NSS` 的预期三字节差异。
+- 数据恢复：首次启动发现有效 localStorage 将 SQLite 的 13 条任务镜像为 1 条手动任务；升级前 SQLite 和最新 JSON 均证明应保留 13 条。已通过应用自带“导入备份”恢复全部 21 个状态键，任务为学在浙大 12 条、手动 1 条；正常关闭调试实例并重新启动后，任务编码摘要与升级前备份逐字节一致。跨过午夜后的复核仅发现 `daily-work.dayKey` 与 `focus-state.dayKey` 随日期正常滚动，其余 19 个状态键保持一致。
+- 桥接验收：直接以 Windows PowerShell `-File` 调用 `install-host.ps1` 时默认 Host 路径错误；当前机器已改用明确的绝对 `HostPath` 修复注册。Native Host SHA256 `4BBC2CCF1E922CE057AC89982883F00F75C170582E84B038B543D141E2B78669`，动态桥认证返回 `accepted`，临时调试端口已关闭。
+- 当前边界：0.3.0 正常实例正在运行；未执行 0.3.0 卸载/重装，未操作 Supabase/OAuth，未签名、上传或公开发布。后续本地维护需修复 `install-host.ps1` 的默认路径解析并补充升级数据优先级回归测试。

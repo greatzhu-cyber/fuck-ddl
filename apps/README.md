@@ -5,7 +5,7 @@
 | 目录                                       | 职责                          | 当前状态                         |
 | ------------------------------------------ | ----------------------------- | -------------------------------- |
 | [web](web/README.md)                       | React/Vite 共享界面和本地状态 | Web 152/152，完整质量门通过      |
-| [desktop](desktop/README.md)               | Tauri 桌面构建包装            | 0.3.0 未签名候选已生成，尚未安装 |
+| [desktop](desktop/README.md)               | Tauri 桌面构建包装            | 0.3.0 已安装，桥接与数据恢复通过 |
 | [edge-extension](edge-extension/README.md) | Edge 域名计时扩展             | 构建/冒烟和全屏实机验收通过      |
 | [native-host](native-host/README.md)       | Native Messaging 桥           | Rust 6/6 与 release 构建通过     |
 
