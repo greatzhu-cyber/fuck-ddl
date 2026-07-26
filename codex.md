@@ -2,16 +2,16 @@
 
 作者：zhu
 邮箱：1976114118@qq.com
-更新时间：2026-07-25
+更新时间：2026-07-26
 当前版本：`0.3.0`
-当前阶段：P0→P4 完成；P5A 本地发布准备完成；P5B 云端、P5C 签名、P5D 发布等待授权
+当前阶段：P0→P4 完成；P5A 本地发布准备与维护完成；P5B 云端、P5C 签名、P5D 发布等待授权
 
 本文是项目唯一的执行契约和进度总账，由原 `codex.md`、`grok.md` 与 `进度文件.md` 完整合并而成。旧结论按历史证据保留，不自动代表当前状态；修改项目之前必须先阅读本文。
 
 ## 当前复核摘要
 
 - 产品定位：Windows 优先的 DDL 工作记录器，核心闭环为任务收集、今日安排、专注计时、工作记录、完成归档和复盘。
-- 当前自动化：Prettier、ESLint、TypeScript、11 表 Schema 契约、领域 24/24、Web 24 个测试文件 152/152、桌面 Rust 33/33、Native Host 6/6、两套 Clippy、生产构建和 Edge 冒烟/构建全部通过。
+- 当前自动化：Prettier、ESLint、TypeScript、11 表 Schema 契约、领域 24/24、Web 24 个测试文件 153/153、桌面 Rust 33/33、Native Host 6/6、两套 Clippy、生产构建和 Edge 冒烟/构建全部通过。
 - P0 已恢复质量基线：修复 3 个过期 ZJU Desktop 测试契约，并统一完成前端与 Rust 格式化。
 - Git 基线：首个可恢复提交为 `f9ada8e`（`chore: establish validated local baseline`）；0.3.0 候选源码提交为 `daad0374d04a62d9dba0943c20d0b256afe2553a`。
 - 桌面实机：0.3.0 已安装并正常运行；版本注册、单实例、动态桥、SQLite 恢复和正常重启保持均已通过。
@@ -1140,3 +1140,12 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 数据恢复：首次启动发现有效 localStorage 将 SQLite 的 13 条任务镜像为 1 条手动任务；升级前 SQLite 和最新 JSON 均证明应保留 13 条。已通过应用自带“导入备份”恢复全部 21 个状态键，任务为学在浙大 12 条、手动 1 条；正常关闭调试实例并重新启动后，任务编码摘要与升级前备份逐字节一致。跨过午夜后的复核仅发现 `daily-work.dayKey` 与 `focus-state.dayKey` 随日期正常滚动，其余 19 个状态键保持一致。
 - 桥接验收：直接以 Windows PowerShell `-File` 调用 `install-host.ps1` 时默认 Host 路径错误；当前机器已改用明确的绝对 `HostPath` 修复注册。Native Host SHA256 `4BBC2CCF1E922CE057AC89982883F00F75C170582E84B038B543D141E2B78669`，动态桥认证返回 `accepted`，临时调试端口已关闭。
 - 当前边界：0.3.0 正常实例正在运行；未执行 0.3.0 卸载/重装，未操作 Supabase/OAuth，未签名、上传或公开发布。后续本地维护需修复 `install-host.ps1` 的默认路径解析并补充升级数据优先级回归测试。
+
+### P5A 启动恢复与 Native Host 路径维护完成（2026-07-26）
+
+状态：**P5A 本地可靠性维护完成；未进入 P5B/P5C/P5D，未执行卸载/重装门禁。**
+
+- `apps/native-host/install-host.ps1` 不再在参数默认值阶段读取 `$PSScriptRoot`；脚本现在显式计算默认 Host 路径，并支持无注册表写入的路径解析回归测试。
+- 桌面启动恢复现在以有效 SQLite 状态为权威；只有 SQLite 缺失的有效 localStorage 状态才回填数据库，避免旧 localStorage 覆盖完整 SQLite 任务镜像。
+- 验证通过：Host 路径回归测试、Web 24 个测试文件 153/153、Native Host Rust 6/6、fmt、Clippy `-D warnings`、Prettier 和 `git diff --check`。
+- 当前边界：未安装新的构建产物，未执行卸载/重装，未操作 Supabase/OAuth，未签名、上传或公开发布。

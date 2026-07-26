@@ -56,12 +56,13 @@ function isVersionedState(key, encodedValue) {
   }
 }
 
-function restoreRows(rows, storage) {
+function restoreRows(rows, storage, { overwriteValid = false } = {}) {
   let restored = 0;
   rows.forEach((row) => {
     if (!isVersionedState(row?.state_key, row?.encoded_value)) return;
     const localValue = storage.getItem?.(row.state_key);
-    if (isVersionedState(row.state_key, localValue)) return;
+    if (!overwriteValid && isVersionedState(row.state_key, localValue)) return;
+    if (localValue === row.encoded_value) return;
     storage.setItem(row.state_key, row.encoded_value);
     restored += 1;
   });
@@ -148,23 +149,29 @@ export async function bootstrapDesktopState({
 
     const repository = repositoryFor(database, now);
     const rows = await repository.selectStateRows();
-    const restored = restoreRows(rows, storage);
-    const localEntries = collectLocalState(storage);
-    knownStateKeys = new Set(
-      rows
-        .filter((row) => isVersionedState(row?.state_key, row?.encoded_value))
-        .map((row) => row.state_key),
+    const validRows = rows.filter((row) =>
+      isVersionedState(row?.state_key, row?.encoded_value),
     );
+    const restored = restoreRows(rows, storage, { overwriteValid: true });
+    const localEntries = collectLocalState(storage);
+    const databaseStateKeys = new Set(validRows.map((row) => row.state_key));
+    knownStateKeys = new Set(databaseStateKeys);
+    let mirrored = 0;
     for (const [key, encodedValue] of localEntries) {
+      if (databaseStateKeys.has(key)) {
+        knownStateKeys.add(key);
+        continue;
+      }
       await repository.upsertState(key, encodedValue, now());
       knownStateKeys.add(key);
+      mirrored += 1;
     }
     return publishStatus({
       state: "ready",
       rowCount: knownStateKeys.size,
       restored,
-      mirrored: localEntries.length,
-      lastWriteAt: localEntries.length > 0 ? now() : null,
+      mirrored,
+      lastWriteAt: mirrored > 0 ? now() : null,
     });
   } catch (error) {
     markDatabaseDegraded();

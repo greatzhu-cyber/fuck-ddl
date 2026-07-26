@@ -1,6 +1,6 @@
 # P5A 本地发布准备清单
 
-更新时间：2026-07-25
+更新时间：2026-07-26
 范围：只读审计、质量门、构建、产物核验及经用户授权的本机升级安装；不签名、不上传、不连接云端。
 
 ## 当前结论
@@ -31,7 +31,7 @@
 
 ## 已通过门禁
 
-- [x] 根质量门 `pnpm check`：Prettier、ESLint、TypeScript、11 表 Schema、桌面 SQLite 能力检查、领域 24/24、Web 152/152、Vite 生产构建。
+- [x] 根质量门：Prettier、ESLint、TypeScript、11 表 Schema、桌面 SQLite 能力检查、领域 24/24、Web 153/153、Vite 生产构建。
 - [x] 桌面 Rust：格式检查、33/33 测试、Clippy `-D warnings`。
 - [x] Native Host Rust：格式检查、6/6 测试、Clippy `-D warnings`、release 构建。
 - [x] Edge：域名跟踪冒烟测试与生产目录构建。
@@ -48,6 +48,8 @@
 - [x] 安装 EXE 与构建 EXE 只相差 Tauri/NSIS 预期的 `BUNDLE_TYPE_VAR_UNK` → `BUNDLE_TYPE_VAR_NSS` 三字节打包标记。
 - [x] 通过应用自带导入流程恢复 21 个状态键和 13 条任务；正常重启后任务编码摘要与升级前 SQLite 逐字节一致。跨日复核仅有 `daily-work.dayKey` 与 `focus-state.dayKey` 按预期滚动。
 - [x] Native Host 使用明确绝对路径完成注册；动态桥认证返回 `accepted`，临时调试端口已关闭。
+- [x] 修复 `install-host.ps1` 的默认 Host 路径解析；默认/显式路径回归测试通过。
+- [x] 启动恢复改为 SQLite 优先；Web 全量 24 个测试文件、153/153 通过，新增“数据库完整、localStorage 过期”回归覆盖。
 
 ## P5A 明确未执行
 
@@ -67,8 +69,7 @@
 
 1. **签名未授权**：安装器与可执行文件均为 `NotSigned`；进入 P5C 前不得声称正式签名。
 2. **外部环境未授权**：Supabase/OAuth 属于 P5B，上传和公开发布属于 P5D。
-3. **本地发布脚本兼容性**：Windows PowerShell `-File` 直接调用 `install-host.ps1` 时默认 Host 路径解析失败；当前注册已用明确 `HostPath` 修复，下一次本地发布前需修复脚本并补充回归测试。
-4. **卸载/重装门禁未执行**：0.3.0 仍需单独授权卸载、重装和再次数据恢复验收。
+3. **卸载/重装门禁未执行**：0.3.0 仍需单独授权卸载、重装和再次数据恢复验收。
 
 ## 后续授权边界
 

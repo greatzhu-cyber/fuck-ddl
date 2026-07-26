@@ -28,4 +28,4 @@ pnpm --filter @fuck-ddl/web test
 pnpm --filter @fuck-ddl/web build
 ```
 
-共享算法进入 `packages/domain`。来源字段只读，解析失败保留旧快照。当前 Web 测试 24 个测试文件、152/152，Prettier、Lint、生产构建和根目录质量门均通过。
+共享算法进入 `packages/domain`。来源字段只读，解析失败保留旧快照。当前 Web 测试 24 个测试文件、153/153，Prettier、Lint、生产构建和根目录质量门均通过。

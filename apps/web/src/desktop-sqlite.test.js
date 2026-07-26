@@ -92,6 +92,39 @@ describe("desktop SQLite state mirror", () => {
     expect(storage.getItem("fuck-ddl:v1:tasks")).toContain("local");
   });
 
+  it("uses SQLite as the startup source of truth when local state is stale", async () => {
+    const storage = createStorage({
+      "fuck-ddl:v1:tasks": '{"version":1,"value":["one-local-task"]}',
+    });
+    const execute = vi.fn().mockResolvedValue({ rowsAffected: 1 });
+    const databaseTasks = '{"version":1,"value":["thirteen-database-tasks"]}';
+
+    await expect(
+      bootstrapDesktopState({
+        storage,
+        openDatabase: async () => ({
+          execute,
+          select: async () => [
+            {
+              state_key: "fuck-ddl:v1:tasks",
+              encoded_value: databaseTasks,
+            },
+          ],
+        }),
+        now: () => "2026-07-26T00:00:00.000Z",
+      }),
+    ).resolves.toMatchObject({
+      state: "ready",
+      rowCount: 1,
+      restored: 1,
+      mirrored: 0,
+      lastWriteAt: null,
+    });
+
+    expect(storage.getItem("fuck-ddl:v1:tasks")).toBe(databaseTasks);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it("restores missing rows and backfills all valid local business state", async () => {
     const storage = createStorage({
       "fuck-ddl:v1:tasks": '{"version":1,"value":[]}',
@@ -116,14 +149,13 @@ describe("desktop SQLite state mirror", () => {
       state: "ready",
       rowCount: 2,
       restored: 1,
-      mirrored: 2,
+      mirrored: 1,
       lastWriteAt: "2026-07-23T00:00:00.000Z",
     });
 
-    expect(execute).toHaveBeenCalledTimes(2);
+    expect(execute).toHaveBeenCalledTimes(1);
     expect(execute.mock.calls.map((call) => call[1][0])).toEqual([
       "fuck-ddl:v1:tasks",
-      "fuck-ddl:v1:goals",
     ]);
   });
 

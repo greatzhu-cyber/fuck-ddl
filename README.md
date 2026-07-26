@@ -9,7 +9,7 @@
 
 当前源码与已安装桌面版均为 `0.3.0`。未签名的 Windows x64 本地候选已在完成 0.2.0 源码、安装器、已安装程序和业务数据备份后安装；版本、单实例、动态 Edge 桥、SQLite 镜像与跨重启数据恢复均已通过本机验证。P0 工程基线、P1 桌面可靠性、P2 PTA/ZJU 联合验收、P3 Edge 全屏验收和 P4 架构治理均已通过；P5A 本地发布准备与安装验收已完成；P5B 云端、P5C 签名和 P5D 发布仍等待单独授权。
 
-当前质量基线：Web 24 个测试文件、152/152，ESLint、TypeScript、Prettier、Vite 生产构建、桌面 Rust 33/33、Native Host 6/6、Edge 冒烟/构建和标准桌面构建均通过。
+当前质量基线：Web 24 个测试文件、153/153，ESLint、TypeScript、Prettier、Vite 生产构建、桌面 Rust 33/33、Native Host 6/6、Edge 冒烟/构建和标准桌面构建均通过。
 
 - P4 第一批已抽出 `useAppPersistentState`，降低 `App.jsx` 的持久化状态编排耦合；
 - SQLite 已建立事务 schema、`app_state` repository、`sync_outbox` 和 `sync_cursors` 边界；`sync_outbox` 已具备租约栅栏、成功确认、指数退避、崩溃回收和 8 次终止失败；

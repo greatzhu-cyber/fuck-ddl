@@ -1,10 +1,19 @@
 param(
   [Parameter(Mandatory = $true)]
   [string]$ExtensionId,
-  [string]$HostPath = "$PSScriptRoot\target\release\fuck-ddl-edge-host.exe"
+  [string]$HostPath,
+  [switch]$ResolveOnly
 )
 
+if ([string]::IsNullOrWhiteSpace($HostPath)) {
+  $HostPath = Join-Path $PSScriptRoot "target\release\fuck-ddl-edge-host.exe"
+}
+
 $resolvedHost = (Resolve-Path -LiteralPath $HostPath).Path
+if ($ResolveOnly) {
+  Write-Output $resolvedHost
+  return
+}
 $manifestPath = Join-Path $env:LOCALAPPDATA "FuckDDL\NativeMessaging\com.fuckddl.edge_host.json"
 $manifestDirectory = Split-Path -Parent $manifestPath
 New-Item -ItemType Directory -Force -Path $manifestDirectory | Out-Null
