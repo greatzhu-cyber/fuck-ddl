@@ -1169,3 +1169,13 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 停止进程后 SQLite 复核曾从 13 条变为 11 条，已使用原始完整备份恢复 13 条；重装启动后保持 21 个状态键、13 条任务，任务摘要与完整备份一致。
 - 动态桥返回 `{"accepted":true}`；第二次启动退出码 0，主进程保持 1 个。
 - 后续动作：复核优雅退出与 SQLite/WAL 备份时序后，再关闭 P5A 这一项待复核。
+
+### P5A SQLite 优雅退出修复（2026-07-26）
+
+状态：**已完成代码修复、自动门禁和 0.3.0 修复候选构建；当前安装版尚未替换，新候选的托盘“彻底退出”实机保留仍需复核。**
+
+- 根因：托盘“彻底退出”原先直接调用 `app.exit(0)`，没有等待 WebView 中异步 SQLite 写队列；`beforeunload` 不能保证异步写入完成。
+- 修复提交：`a5152a2`（`fix: flush desktop state before graceful exit`）。Rust 先发 `fuck-ddl:desktop-exit-request`，前端保存当前状态并等待 `flushDesktopState()`，再调用 `complete_desktop_exit`。
+- 自动验证：Web 24 个测试文件、154/154；受影响文件 Prettier；Tauri Rust 33/33、`cargo fmt -- --check`、Clippy `-D warnings`；Vite 生产构建和 Tauri Release 构建通过。
+- 新候选：`apps/desktop/src-tauri/target/release/bundle/nsis/Fuck DDL_0.3.0_x64-setup.exe`，3,343,343 bytes，SHA256 `E7F47CA3812B3ACDFBD5FBD8E95E3D64359618493ECD5C78D374C93F1216F852`；EXE SHA256 `B26DBA74A104ACE46106FAB4BF76A9B05AE27B81A7D6A1371EDA1C97588BC8C0`，ProductVersion/FileVersion 均为 `0.3.0`。
+- 边界：本候选尚未安装到当前实例；强制结束进程仍不承诺 SQLite 数据完整性，只把 P5A 的“优雅退出”路径纳入可验证流程。

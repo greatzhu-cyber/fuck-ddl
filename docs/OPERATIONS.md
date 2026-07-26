@@ -25,7 +25,7 @@
 - 2026-07-25 P5A 0.3.0 候选：3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；Authenticode 状态为 `NotSigned`。
 - 2026-07-26 修复版候选：3,342,127 bytes，SHA256 `AE58F65717AD9F50AC46D7DCF738F64850B2706B9418CEB8229808B8112B7E6A`；来源提交 `7adc2d05230ee29ecb7be0bb42ecc379676073b3`，Authenticode 状态为 `NotSigned`。
 - 完整门禁与阻塞项见 `RELEASE_CHECKLIST.md`。
-- 已安装 EXE 的 ProductVersion/FileVersion 均为 `0.3.0`，修复版 SHA256 `D5229139CBED3D72E85CF9F2C738EBE66F6F6D1E4B027F3440BA76D8BED98ADC`。
+- 已安装 EXE 的 ProductVersion/FileVersion 均为 `0.3.0`，修复版 SHA256 `D5229139CBED3D72E85CF9F2C738EBE66F6F6D1E4B027F3440BA76D8BED98ADC`。- 工作区已从提交 `a5152a2` 生成新的 0.3.0 优雅退出修复候选：安装器 3,343,343 bytes，SHA256 `E7F47CA3812B3ACDFBD5FBD8E95E3D64359618493ECD5C78D374C93F1216F852`；当前安装版仍未替换，强制结束不作为数据保留验收。
 - 升级前备份位于 `work/backups/pre-upgrade-0.2.0-to-0.3.0-20260725-233618`；修复版升级前维护备份位于 `work/backups/pre-maintenance-0.3.0-to-0.3.0-20260726-103436`，卸载前恢复点位于 `work/backups/pre-uninstall-reinstall-0.3.0-20260726-105111`，分别完成 24/24、21/21、24/24 清单校验，未复制平台 Cookie 或登录会话。
 - 主窗口关闭会隐藏到托盘；使用托盘菜单“显示 Fuck DDL”恢复，选择“彻底退出”才停止进程。重复启动会唤醒现有窗口。卸载/重装已完成，但停止进程后的数据保留漂移仍需复核。
 - 通知插件已进入安装版；Windows 原生无声 Toast 已在安装版中完成可见性验收。
