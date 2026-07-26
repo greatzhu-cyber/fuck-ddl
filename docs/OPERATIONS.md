@@ -26,8 +26,8 @@
 - 2026-07-26 修复版候选：3,342,127 bytes，SHA256 `AE58F65717AD9F50AC46D7DCF738F64850B2706B9418CEB8229808B8112B7E6A`；来源提交 `7adc2d05230ee29ecb7be0bb42ecc379676073b3`，Authenticode 状态为 `NotSigned`。
 - 完整门禁与阻塞项见 `RELEASE_CHECKLIST.md`。
 - 已安装 EXE 的 ProductVersion/FileVersion 均为 `0.3.0`，修复版 SHA256 `D5229139CBED3D72E85CF9F2C738EBE66F6F6D1E4B027F3440BA76D8BED98ADC`。
-- 升级前备份位于 `work/backups/pre-upgrade-0.2.0-to-0.3.0-20260725-233618`；修复版升级前维护备份位于 `work/backups/pre-maintenance-0.3.0-to-0.3.0-20260726-103436`，分别完成 24/24 与 21/21 清单校验，未复制平台 Cookie 或登录会话。
-- 主窗口关闭会隐藏到托盘；使用托盘菜单“显示 Fuck DDL”恢复，选择“彻底退出”才停止进程。重复启动会唤醒现有窗口。
+- 升级前备份位于 `work/backups/pre-upgrade-0.2.0-to-0.3.0-20260725-233618`；修复版升级前维护备份位于 `work/backups/pre-maintenance-0.3.0-to-0.3.0-20260726-103436`，卸载前恢复点位于 `work/backups/pre-uninstall-reinstall-0.3.0-20260726-105111`，分别完成 24/24、21/21、24/24 清单校验，未复制平台 Cookie 或登录会话。
+- 主窗口关闭会隐藏到托盘；使用托盘菜单“显示 Fuck DDL”恢复，选择“彻底退出”才停止进程。重复启动会唤醒现有窗口。卸载/重装已完成，但停止进程后的数据保留漂移仍需复核。
 - 通知插件已进入安装版；Windows 原生无声 Toast 已在安装版中完成可见性验收。
 
 ## 2. 环境分层
@@ -106,7 +106,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\finish-local-release.ps1
 
 全屏提醒验收必须使用 0.1.13 或更高版本。达到阈值后，除静音系统通知外，桌面端还会显示标题为“Fuck DDL · 摸鱼提醒”的置顶小窗口，以绕过 Windows 在网页全屏时可能启用的通知抑制。桌面端启动时由 Windows 分配可用回环端口并写入 `edge-bridge.endpoint`，Native Host 每次投递前读取该端点；不得恢复为固定端口。若扩展未显示“桌面端连接正常”、专注未自动暂停或窗口未出现，不得把 Phase 6 标记为通过。
 
-卸载时必须删除 `HKCU\Software\Microsoft\Edge\NativeMessagingHosts\com.fuckddl.edge_host` 和对应 manifest；不得删除 Fuck DDL 用户数据。0.2.0 已完成静默卸载→备份保留→重装→启动的本机验证。
+卸载时必须删除 `HKCU\Software\Microsoft\Edge\NativeMessagingHosts\com.fuckddl.edge_host` 和对应 manifest；不得删除 Fuck DDL 用户数据。0.2.0 的静默卸载→备份保留→重装→启动验证已作为历史基线保留；0.3.0 本轮卸载/重装流程已完成，但停止进程后的数据库保留出现 13→11 条漂移，必须在关闭 P5A 前完成优雅退出与 SQLite/WAL 备份时序复核。
 
 ## 5. 备份与恢复
 

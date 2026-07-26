@@ -10,4 +10,4 @@ pnpm --filter @fuck-ddl/desktop build
 pnpm --filter @fuck-ddl/desktop build:installer
 ```
 
-当前源码与已安装桌面版均为 0.3.0；修复版未签名 NSIS 安装器已完成本机同版本升级。Host 默认路径与 SQLite 启动优先级修复已安装并通过实机验证；13 条任务已从完整备份恢复，卸载/重装门禁尚未执行。
+当前源码与已安装桌面版均为 0.3.0；修复版未签名 NSIS 安装器已完成本机升级及卸载/重装。Host 默认路径与 SQLite 启动优先级修复已通过实机验证；最终 13 条任务已从完整备份恢复，卸载/重装过程中出现的自动保留漂移仍需复核。
