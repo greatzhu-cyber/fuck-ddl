@@ -1149,3 +1149,13 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 桌面启动恢复现在以有效 SQLite 状态为权威；只有 SQLite 缺失的有效 localStorage 状态才回填数据库，避免旧 localStorage 覆盖完整 SQLite 任务镜像。
 - 验证通过：Host 路径回归测试、Web 24 个测试文件 153/153、Native Host Rust 6/6、fmt、Clippy `-D warnings`、Prettier 和 `git diff --check`。
 - 当前边界：未安装新的构建产物，未执行卸载/重装，未操作 Supabase/OAuth，未签名、上传或公开发布。
+
+### P5A 修复版 0.3.0 升级安装完成（2026-07-26）
+
+状态：**修复版已从 `7adc2d05230ee29ecb7be0bb42ecc379676073b3` 重建并同版本升级安装；数据恢复、动态桥和单实例验收通过，未进入 P5B/P5C/P5D。**
+
+- 修复版 NSIS 安装器：3,342,127 bytes，SHA256 `AE58F65717AD9F50AC46D7DCF738F64850B2706B9418CEB8229808B8112B7E6A`，未签名。
+- 安装返回码为 0；ProductVersion、FileVersion、卸载注册均为 `0.3.0`；当前安装 EXE SHA256 `D5229139CBED3D72E85CF9F2C738EBE66F6F6D1E4B027F3440BA76D8BED98ADC`。
+- 升级前维护备份：`work/backups/pre-maintenance-0.3.0-to-0.3.0-20260726-103436`，21/21 校验通过。旧版启动已将当前库覆盖为 1 条任务，已从完整升级前备份恢复 13 条；修复版启动后保持 21 个状态键、13 条任务，任务摘要逐字节一致。
+- 动态桥返回 `{"accepted":true}`；第二次启动退出码 0，主进程保持 1 个。
+- 边界：未执行卸载/重装，未操作 Supabase/OAuth，未签名、上传或公开发布。

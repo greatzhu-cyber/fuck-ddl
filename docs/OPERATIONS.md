@@ -18,13 +18,15 @@
 
 - 便携文件：`apps/desktop/src-tauri/target/release/fuck-ddl.exe`。
 - P5A 本地候选：`apps/desktop/src-tauri/target/release/bundle/nsis/Fuck DDL_0.3.0_x64-setup.exe`；已完成本机升级安装。
-- 当前构建：Tauri 2 Release、未签名 NSIS x64 安装器；`0.3.0` 已锁定，并已从审阅后的源码提交 `daad0374d04a62d9dba0943c20d0b256afe2553a` 在干净工作区重建。
+- 当前构建：Tauri 2 Release、未签名 NSIS x64 安装器；`0.3.0` 已锁定，修复版从提交 `7adc2d05230ee29ecb7be0bb42ecc379676073b3` 重建并完成本机同版本升级。
 - 运行方式：优先安装后从开始菜单运行；本机安装路径为 `C:\Users\zhu\Fuck DDL`。
 - 重新构建：在已加载 MSVC 环境且 Rust/Cargo 可用的终端运行 `pnpm desktop:build`。
 - 当前数据以 WebView localStorage 为主，并由应用私有 SQLite 镜像和本机 JSON 自动备份保护；仍不视为云端多设备数据源。
-- 2026-07-25 P5A 0.3.0 候选：3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；Authenticode 状态为 `NotSigned`。来源可追溯，但尚未验证 NSIS 跨次重建的逐字节确定性。完整门禁与阻塞项见 `RELEASE_CHECKLIST.md`。
-- 已安装 EXE 的 ProductVersion/FileVersion 均为 `0.3.0`，SHA256 `16742D85CB867CA4F164158952ABB16C1DF995B1E7BF3DAE455F4B10DCED465F`；它与构建 EXE 只相差 Tauri/NSIS 预期的 `BUNDLE_TYPE_VAR_UNK` → `BUNDLE_TYPE_VAR_NSS` 三字节打包标记。
-- 升级前备份位于 `work/backups/pre-upgrade-0.2.0-to-0.3.0-20260725-233618`；24 个清单文件全部通过 SHA256 复核，未复制平台 Cookie 或登录会话。
+- 2026-07-25 P5A 0.3.0 候选：3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；Authenticode 状态为 `NotSigned`。
+- 2026-07-26 修复版候选：3,342,127 bytes，SHA256 `AE58F65717AD9F50AC46D7DCF738F64850B2706B9418CEB8229808B8112B7E6A`；来源提交 `7adc2d05230ee29ecb7be0bb42ecc379676073b3`，Authenticode 状态为 `NotSigned`。
+- 完整门禁与阻塞项见 `RELEASE_CHECKLIST.md`。
+- 已安装 EXE 的 ProductVersion/FileVersion 均为 `0.3.0`，修复版 SHA256 `D5229139CBED3D72E85CF9F2C738EBE66F6F6D1E4B027F3440BA76D8BED98ADC`。
+- 升级前备份位于 `work/backups/pre-upgrade-0.2.0-to-0.3.0-20260725-233618`；修复版升级前维护备份位于 `work/backups/pre-maintenance-0.3.0-to-0.3.0-20260726-103436`，分别完成 24/24 与 21/21 清单校验，未复制平台 Cookie 或登录会话。
 - 主窗口关闭会隐藏到托盘；使用托盘菜单“显示 Fuck DDL”恢复，选择“彻底退出”才停止进程。重复启动会唤醒现有窗口。
 - 通知插件已进入安装版；Windows 原生无声 Toast 已在安装版中完成可见性验收。
 
