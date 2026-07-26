@@ -5,6 +5,7 @@ import {
   getDesktopDatabaseStatus,
   openDesktopDatabase,
   persistDesktopState,
+  persistDesktopStateEntries,
   replayDesktopOutbox,
   resetDesktopDatabaseForTests,
   restoreDesktopState,
@@ -250,6 +251,23 @@ describe("desktop SQLite state mirror", () => {
     release({ rowsAffected: 1 });
     await expect(write).resolves.toBe(true);
     await expect(flush).resolves.toBe(true);
+  });
+  it("persists every imported state row before the next reload", async () => {
+    const execute = vi.fn().mockResolvedValue({ rowsAffected: 1 });
+    const openDatabase = vi.fn().mockResolvedValue({ execute });
+    const entries = [
+      ["fuck-ddl:v1:tasks", '{"version":1,"value":["restored"]}'],
+      ["fuck-ddl:v1:goals", '{"version":1,"value":[]}'],
+    ];
+
+    await expect(
+      persistDesktopStateEntries(entries, { openDatabase }),
+    ).resolves.toBe(true);
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(execute.mock.calls.map((call) => call[1][0])).toEqual([
+      "fuck-ddl:v1:tasks",
+      "fuck-ddl:v1:goals",
+    ]);
   });
 
   it("rejects non-business or malformed state before it reaches SQLite", async () => {

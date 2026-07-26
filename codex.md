@@ -1179,3 +1179,13 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 自动验证：Web 24 个测试文件、154/154；受影响文件 Prettier；Tauri Rust 33/33、`cargo fmt -- --check`、Clippy `-D warnings`；Vite 生产构建和 Tauri Release 构建通过。
 - 新候选：`apps/desktop/src-tauri/target/release/bundle/nsis/Fuck DDL_0.3.0_x64-setup.exe`，3,343,343 bytes，SHA256 `E7F47CA3812B3ACDFBD5FBD8E95E3D64359618493ECD5C78D374C93F1216F852`；EXE SHA256 `B26DBA74A104ACE46106FAB4BF76A9B05AE27B81A7D6A1371EDA1C97588BC8C0`，ProductVersion/FileVersion 均为 `0.3.0`。
 - 边界：本候选尚未安装到当前实例；强制结束进程仍不承诺 SQLite 数据完整性，只把 P5A 的“优雅退出”路径纳入可验证流程。
+
+### P5A 优雅退出验收结论更正（2026-07-26）
+
+状态：**用户确认 11 条活跃任务为正常状态；前次 13→11 不是数据丢失，P5A 优雅退出验收通过。**
+
+- 缺少的 `zju:99089:74o1cb` 与 `zju:99089:y3y5a9` 已由用户完成，因此从活跃任务列表移除；前次核对将已完成任务误判为丢失。
+- 进程正常退出、SQLite 完整性检查为 `ok`、21 个状态键保留，11 条活跃任务符合用户当前业务状态。
+- 本轮仍保留并验证了独立修复：导入备份后先将恢复状态逐项写回 SQLite，并等待写队列完成，再 reload，避免旧数据库覆盖新导入的 localStorage。
+- 修复验证：Web 24 个测试文件 156/156，SQLite 定向测试 12/12，格式检查、定向 ESLint、`git diff --check`、Vite 生产构建和 Cargo release 构建通过；0.3.0 修复版已安装并启动。
+- 阶段边界：P5A 收口完成；未进入 P5B/P5C/P5D，后续云端、签名和公开发布仍需单独授权。

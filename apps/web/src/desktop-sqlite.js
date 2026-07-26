@@ -229,6 +229,14 @@ export function persistDesktopState(
 export function flushDesktopState() {
   return writeQueue;
 }
+export async function persistDesktopStateEntries(entries, options) {
+  for (const [key, encodedValue] of entries) {
+    const persisted = await persistDesktopState(key, encodedValue, options);
+    if (!persisted) return false;
+  }
+  await flushDesktopState();
+  return true;
+}
 
 export function enqueueDesktopOutbox(
   operation,

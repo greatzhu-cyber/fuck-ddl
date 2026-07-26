@@ -111,6 +111,7 @@ import {
   DESKTOP_DATABASE_STATUS_EVENT,
   flushDesktopState,
   getDesktopDatabaseStatus,
+  persistDesktopStateEntries,
 } from "./desktop-sqlite.js";
 import { GradebookView } from "./GradebookView.jsx";
 import {
@@ -2106,6 +2107,13 @@ export function App() {
       const backup = JSON.parse(await file.text());
       await saveDesktopBackup(createBackupDocument(window.localStorage));
       const restored = restoreBackupDocument(backup, window.localStorage);
+      if (isTauriDesktop()) {
+        const restoredState = createBackupDocument(window.localStorage).state;
+        const persisted = await persistDesktopStateEntries(
+          Object.entries(restoredState),
+        );
+        if (!persisted) throw new Error("desktop-state-import-not-persisted");
+      }
       setToast(`已恢复 ${restored} 项数据，正在重新加载`);
       window.setTimeout(() => window.location.reload(), 300);
     } catch {
