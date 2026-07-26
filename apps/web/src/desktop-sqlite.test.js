@@ -176,6 +176,26 @@ describe("desktop SQLite state mirror", () => {
     });
   });
 
+  it("blocks stale local state writes after bootstrap failure", async () => {
+    const openDatabase = vi
+      .fn()
+      .mockRejectedValue(new Error("database locked"));
+
+    await expect(
+      bootstrapDesktopState({
+        storage: createStorage(),
+        openDatabase,
+      }),
+    ).rejects.toThrow("database locked");
+
+    await expect(
+      persistDesktopState("fuck-ddl:v1:tasks", '{"version":1,"value":[]}', {
+        openDatabase,
+      }),
+    ).resolves.toBe(false);
+    expect(openDatabase).toHaveBeenCalledTimes(1);
+  });
+
   it("writes state through a serialized queue", async () => {
     const execute = vi.fn().mockResolvedValue({ rowsAffected: 1 });
     const database = { execute };

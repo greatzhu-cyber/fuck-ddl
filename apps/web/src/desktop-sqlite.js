@@ -14,6 +14,7 @@ let writeQueue = Promise.resolve();
 let replayPromise = null;
 let databaseStatus = createInitialStatus();
 let knownStateKeys = new Set();
+let databaseWriteState = isTauriDesktop() ? "pending" : "browser";
 
 function createInitialStatus() {
   return {
@@ -93,6 +94,7 @@ export function resetDesktopDatabaseForTests() {
   replayPromise = null;
   databaseStatus = createInitialStatus();
   knownStateKeys = new Set();
+  databaseWriteState = isTauriDesktop() ? "ready" : "browser";
 }
 
 export async function openDesktopDatabase({ load = Database.load } = {}) {
@@ -139,6 +141,7 @@ export async function bootstrapDesktopState({
   try {
     const database = await openDatabase();
     if (!database) {
+      databaseWriteState = "browser";
       return publishStatus({
         state: "browser",
         rowCount: 0,
@@ -166,6 +169,7 @@ export async function bootstrapDesktopState({
       knownStateKeys.add(key);
       mirrored += 1;
     }
+    databaseWriteState = "ready";
     return publishStatus({
       state: "ready",
       rowCount: knownStateKeys.size,
@@ -174,6 +178,7 @@ export async function bootstrapDesktopState({
       lastWriteAt: mirrored > 0 ? now() : null,
     });
   } catch (error) {
+    databaseWriteState = "blocked";
     markDatabaseDegraded();
     throw error;
   }
@@ -187,7 +192,11 @@ export function persistDesktopState(
     now = () => new Date().toISOString(),
   } = {},
 ) {
-  if (!isTauriDesktop() || !isVersionedState(key, encodedValue)) {
+  if (
+    !isTauriDesktop() ||
+    databaseWriteState !== "ready" ||
+    !isVersionedState(key, encodedValue)
+  ) {
     return Promise.resolve(false);
   }
   writeQueue = writeQueue
@@ -209,6 +218,7 @@ export function persistDesktopState(
         });
         return true;
       } catch (error) {
+        databaseWriteState = "blocked";
         markDatabaseDegraded();
         throw error;
       }
@@ -227,7 +237,8 @@ export function enqueueDesktopOutbox(
     now = () => new Date().toISOString(),
   } = {},
 ) {
-  if (!isTauriDesktop()) return Promise.resolve(false);
+  if (!isTauriDesktop() || databaseWriteState !== "ready")
+    return Promise.resolve(false);
   writeQueue = writeQueue
     .catch(() => undefined)
     .then(async () => {
@@ -236,6 +247,7 @@ export function enqueueDesktopOutbox(
         if (!database) return false;
         return repositoryFor(database, now).enqueueOutbox(operation);
       } catch (error) {
+        databaseWriteState = "blocked";
         markDatabaseDegraded();
         throw error;
       }
