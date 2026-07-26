@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import {
   Archive,
   ArrowsClockwise,
@@ -107,6 +109,7 @@ import {
 import { saveDesktopBackup } from "./desktop-backup.js";
 import {
   DESKTOP_DATABASE_STATUS_EVENT,
+  flushDesktopState,
   getDesktopDatabaseStatus,
 } from "./desktop-sqlite.js";
 import { GradebookView } from "./GradebookView.jsx";
@@ -115,6 +118,8 @@ import {
   mergeGradeRecords,
   normalizeZjuCourseCatalog,
 } from "./grades.js";
+
+const DESKTOP_EXIT_REQUEST_EVENT = "fuck-ddl:desktop-exit-request";
 
 const navItems = [
   { id: "deadlines", label: "最近 DDL", icon: Clock },
@@ -1030,6 +1035,7 @@ export function App() {
   const gradeRecordsRef = useRef(gradeRecords);
   const gradeSyncSettingsRef = useRef(gradeSyncSettings);
   const zjuCourseCatalogRef = useRef(zjuCourseCatalog);
+  const exitInProgressRef = useRef(false);
 
   useEffect(() => {
     function handleDesktopDatabaseStatus(event) {
@@ -1415,47 +1421,81 @@ export function App() {
     setTasks,
   ]);
 
-  useEffect(() => {
-    function saveBeforeClose() {
-      const current = stateRef.current;
-      const preset =
-        presets.find((item) => item.id === current.modeId) ?? defaultPresets[0];
-      let finalState = current;
-      if (["focusing", "paused"].includes(current.phase)) {
-        finalState = stopFocus(current, preset);
-        const entry = {
-          id: current.sessionId,
-          taskId: current.taskId,
-          modeId: current.modeId,
-          focusedSeconds: current.focusSeconds,
-          completed: false,
-          endedAt: new Date().toISOString(),
-        };
-        const history = historyRef.current.some((item) => item.id === entry.id)
-          ? historyRef.current
-          : [...historyRef.current, entry];
-        writePersistentState(STORAGE_KEYS.focusHistory, history);
-        if (current.taskId && current.focusSeconds > 0) {
-          const nextTasks = tasksRef.current.map((task) =>
-            task.id === current.taskId
-              ? {
-                  ...task,
-                  focusedSeconds:
-                    Number(task.focusedSeconds ?? 0) + current.focusSeconds,
-                }
-              : task,
-          );
-          writePersistentState(STORAGE_KEYS.tasks, nextTasks);
-        }
-      } else if (["resting", "distracted"].includes(current.phase)) {
-        finalState = stopActiveTimer(current);
+  const saveBeforeClose = useCallback(() => {
+    const current = stateRef.current;
+    const preset =
+      presets.find((item) => item.id === current.modeId) ?? defaultPresets[0];
+    let finalState = current;
+    if (["focusing", "paused"].includes(current.phase)) {
+      finalState = stopFocus(current, preset);
+      const entry = {
+        id: current.sessionId,
+        taskId: current.taskId,
+        modeId: current.modeId,
+        focusedSeconds: current.focusSeconds,
+        completed: false,
+        endedAt: new Date().toISOString(),
+      };
+      const history = historyRef.current.some((item) => item.id === entry.id)
+        ? historyRef.current
+        : [...historyRef.current, entry];
+      writePersistentState(STORAGE_KEYS.focusHistory, history);
+      if (current.taskId && current.focusSeconds > 0) {
+        const nextTasks = tasksRef.current.map((task) =>
+          task.id === current.taskId
+            ? {
+                ...task,
+                focusedSeconds:
+                  Number(task.focusedSeconds ?? 0) + current.focusSeconds,
+              }
+            : task,
+        );
+        writePersistentState(STORAGE_KEYS.tasks, nextTasks);
       }
-      writePersistentState(STORAGE_KEYS.focusState, finalState);
+    } else if (["resting", "distracted"].includes(current.phase)) {
+      finalState = stopActiveTimer(current);
     }
+    writePersistentState(STORAGE_KEYS.focusState, finalState);
+  }, [presets]);
 
+  useEffect(() => {
     window.addEventListener("beforeunload", saveBeforeClose);
     return () => window.removeEventListener("beforeunload", saveBeforeClose);
-  }, [presets]);
+  }, [saveBeforeClose]);
+
+  useEffect(() => {
+    if (!isTauriDesktop()) return undefined;
+    let active = true;
+    let stopListening;
+    const handleExitRequest = async () => {
+      if (!active || exitInProgressRef.current) return;
+      exitInProgressRef.current = true;
+      saveBeforeClose();
+      try {
+        await flushDesktopState();
+      } catch {
+        // Exit must not hang if the database is already unavailable.
+      }
+      if (!active) return;
+      try {
+        await invoke("complete_desktop_exit");
+      } catch {
+        exitInProgressRef.current = false;
+      }
+    };
+    void listen(DESKTOP_EXIT_REQUEST_EVENT, handleExitRequest)
+      .then((unlisten) => {
+        if (active) stopListening = unlisten;
+        else unlisten();
+      })
+      .catch(() => {
+        // Browser mode and older shells can omit the desktop exit event.
+      });
+    return () => {
+      active = false;
+      stopListening?.();
+    };
+  }, [saveBeforeClose]);
 
   const displayTasks = useMemo(
     () =>

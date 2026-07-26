@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   bootstrapDesktopState,
+  flushDesktopState,
   getDesktopDatabaseStatus,
   openDesktopDatabase,
   persistDesktopState,
@@ -200,6 +201,35 @@ describe("desktop SQLite state mirror", () => {
       rowCount: 2,
       lastWriteAt: "2026-07-11T00:00:01.000Z",
     });
+  });
+
+  it("flushes writes already queued before desktop exit", async () => {
+    let release;
+    const execute = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const openDatabase = vi.fn().mockResolvedValue({ execute });
+    const write = persistDesktopState(
+      "fuck-ddl:v1:tasks",
+      '{"version":1,"value":[]}',
+      { openDatabase, now: () => "2026-07-26T00:00:00.000Z" },
+    );
+
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1));
+    const flush = flushDesktopState();
+    let settled = false;
+    void flush.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    release({ rowsAffected: 1 });
+    await expect(write).resolves.toBe(true);
+    await expect(flush).resolves.toBe(true);
   });
 
   it("rejects non-business or malformed state before it reaches SQLite", async () => {

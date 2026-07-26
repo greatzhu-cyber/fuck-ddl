@@ -7,8 +7,15 @@ mod zju;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager, WindowEvent,
+    AppHandle, Emitter, Manager, WindowEvent,
 };
+
+const DESKTOP_EXIT_REQUEST_EVENT: &str = "fuck-ddl:desktop-exit-request";
+
+#[tauri::command]
+fn complete_desktop_exit(app: AppHandle) {
+    app.exit(0);
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -38,7 +45,9 @@ pub fn run() {
                             let _ = window.set_focus();
                         }
                     }
-                    "quit" => app.exit(0),
+                    "quit" => {
+                        let _ = app.emit(DESKTOP_EXIT_REQUEST_EVENT, ());
+                    }
                     _ => {}
                 });
             if let Some(icon) = app.default_window_icon().cloned() {
@@ -67,7 +76,8 @@ pub fn run() {
             pintia::reset_pintia_session,
             pintia::sync_pintia,
             zju::open_zju_login,
-            zju::sync_zju
+            zju::sync_zju,
+            complete_desktop_exit
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Fuck DDL desktop application");

@@ -216,6 +216,10 @@ export function persistDesktopState(
   return writeQueue;
 }
 
+export function flushDesktopState() {
+  return writeQueue;
+}
+
 export function enqueueDesktopOutbox(
   operation,
   {
