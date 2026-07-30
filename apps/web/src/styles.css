@@ -327,7 +327,7 @@ textarea:focus-visible,
   position: absolute;
   right: 0;
   top: 48px;
-  width: 220px;
+  width: 320px;
   background: white;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -363,6 +363,54 @@ textarea:focus-visible,
   background: #fef3f2;
   font-size: 12px;
   line-height: 1.45;
+}
+.cloud-sync-panel {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  display: grid;
+  gap: 8px;
+}
+.cloud-sync-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cloud-sync-heading small {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.account-menu .cloud-sync-panel button {
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: white;
+  align-items: center;
+  justify-content: center;
+}
+.account-menu .cloud-sync-primary {
+  color: white;
+  border-color: #111827;
+  background: #111827;
+}
+.cloud-sync-conflict {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.cloud-sync-conflict > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.account-menu .account-sign-out {
+  color: var(--muted);
 }
 
 .main-content {

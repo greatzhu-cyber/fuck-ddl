@@ -18,6 +18,7 @@ const userTables = [
   "goals",
   "projects",
   "tasks",
+  "cloud_state",
   "subtasks",
   "time_entries",
   "task_versions",

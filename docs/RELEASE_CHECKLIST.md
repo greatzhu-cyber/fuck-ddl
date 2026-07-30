@@ -1,6 +1,6 @@
 # P5A 本地发布准备清单
 
-更新时间：2026-07-26
+更新时间：2026-07-30
 范围：只读审计、质量门、构建、产物核验及经用户授权的本机升级安装；不签名、不上传、不连接云端。
 
 ## 当前结论
@@ -82,3 +82,13 @@
 - P5B：Supabase、数据库迁移、GitHub OAuth 和双用户隔离。
 - P5C：代码签名证书、签名安装包与签名验证。
 - P5D：指定目标、版本和可见性后上传或公开发布。
+
+## P5B 完成与 P5C/P5D 启动审计（2026-07-30）
+
+- [x] P5B 双用户真实 OAuth、cloud_state 同用户读写、幂等同步和双向 RLS 隔离通过，并获用户明确验收。
+- [x] Windows SDK `signtool.exe` 可用。
+- [ ] 正式代码签名证书：CurrentUser/LocalMachine 均未发现可用代码签名证书；不得以自签名证书替代公开发布公信签名。
+- [ ] 发布仓库与可见性：当前 Git 仓库无 remote，GitHub CLI 未安装，用户尚未指定 owner/repo 及 public/private。
+- [ ] 生产云配置：目前只有独立 staging 项目；正式客户端的 Supabase URL、publishable key、OAuth 回调和生产迁移尚未配置。
+- [ ] Tauri 更新通道：尚无 updater endpoint、公钥、签名私钥或更新清单配置。
+- [ ] 在上述条件满足后，从明确发布提交重建、签名、验证、上传，并记录最终 SHA256、Authenticode、Release URL 和回滚步骤。

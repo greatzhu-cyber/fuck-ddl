@@ -2,16 +2,16 @@
 
 作者：zhu
 邮箱：1976114118@qq.com
-更新时间：2026-07-26
+更新时间：2026-07-30
 当前版本：`0.3.0`
-当前阶段：P0→P4 完成；P5A 本地发布准备与维护完成；P5B 云端、P5C 签名、P5D 发布等待授权
+当前阶段：P0→P4 完成；P5A 完成；P5B staging 完成；P5C/P5D 已授权并进入发布准备
 
 本文是项目唯一的执行契约和进度总账，由原 `codex.md`、`grok.md` 与 `进度文件.md` 完整合并而成。旧结论按历史证据保留，不自动代表当前状态；修改项目之前必须先阅读本文。
 
 ## 当前复核摘要
 
 - 产品定位：Windows 优先的 DDL 工作记录器，核心闭环为任务收集、今日安排、专注计时、工作记录、完成归档和复盘。
-- 当前自动化：Prettier、ESLint、TypeScript、11 表 Schema 契约、领域 24/24、Web 24 个测试文件 153/153、桌面 Rust 33/33、Native Host 6/6、两套 Clippy、生产构建和 Edge 冒烟/构建全部通过。
+- 当前自动化：Prettier、ESLint、TypeScript、13 表 Schema 契约、领域 24/24、Web 25 个测试文件 161/161、桌面 Rust 33/33、Native Host 6/6、两套 Clippy、生产构建和 Edge 冒烟/构建全部通过。
 - P0 已恢复质量基线：修复 3 个过期 ZJU Desktop 测试契约，并统一完成前端与 Rust 格式化。
 - Git 基线：首个可恢复提交为 `f9ada8e`（`chore: establish validated local baseline`）；0.3.0 候选源码提交为 `daad0374d04a62d9dba0943c20d0b256afe2553a`。
 - 桌面实机：0.3.0 已安装并正常运行；版本注册、单实例、动态桥、SQLite 恢复和正常重启保持均已通过。
@@ -19,18 +19,18 @@
 - 当前产物：0.3.0 未签名 NSIS x64 候选已从 `daad0374d04a62d9dba0943c20d0b256afe2553a` 在干净工作区重建，大小 3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；已完成本机升级安装。
 - 可复现性：候选来源已可追溯，原“工作区不可复现”阻塞已解决；尚未通过两次独立干净重建比较验证 NSIS 的逐字节确定性。
 
-- 授权边界：真实账号、云资源、OAuth、签名、公开发布、重装和系统网络设置仍需单独授权。
+- 授权边界：P5C/P5D 已获启动授权；正式签名仍需受信任证书，公开发布仍需明确仓库、可见性与生产配置，系统网络设置不在授权范围。
 
 ## 当前执行计划
 
-| 阶段             | 状态     | 退出门禁                                                                        |
-| ---------------- | -------- | ------------------------------------------------------------------------------- |
-| P0 工程基线      | 完成     | 文档统一、目录 README 完成、敏感文件边界明确、全部质量门通过、首个 Git 基线建立 |
-| P1 桌面可靠性    | 完成     | SQLite 真正落盘，核心流程、重启、损坏降级和备份恢复通过                         |
-| P2 来源联合验收  | 完成     | PTA/ZJU 真实任务与成绩幂等、会话保持和本地字段保护通过                          |
-| P3 Edge 实机门禁 | 完成     | 未专注拒绝与真实全屏 10 分钟置顶提醒通过                                        |
-| P4 架构治理      | 完成     | outbox 离线重放、恢复、幂等和冲突治理及用户实机验收均通过                       |
-| P5 云端与发布    | P5A 完成 | 本地候选与清单已完成；P5B/P5C/P5D 分别等待授权                                  |
+| 阶段             | 状态           | 退出门禁                                                                        |
+| ---------------- | -------------- | ------------------------------------------------------------------------------- |
+| P0 工程基线      | 完成           | 文档统一、目录 README 完成、敏感文件边界明确、全部质量门通过、首个 Git 基线建立 |
+| P1 桌面可靠性    | 完成           | SQLite 真正落盘，核心流程、重启、损坏降级和备份恢复通过                         |
+| P2 来源联合验收  | 完成           | PTA/ZJU 真实任务与成绩幂等、会话保持和本地字段保护通过                          |
+| P3 Edge 实机门禁 | 完成           | 未专注拒绝与真实全屏 10 分钟置顶提醒通过                                        |
+| P4 架构治理      | 完成           | outbox 离线重放、恢复、幂等和冲突治理及用户实机验收均通过                       |
+| P5 云端与发布    | P5C/P5D 进行中 | P5B 已验收；P5C 缺正式证书，P5D 待指定仓库、可见性与生产配置                    |
 
 ## 当前工作规范
 
@@ -1189,3 +1189,47 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 本轮仍保留并验证了独立修复：导入备份后先将恢复状态逐项写回 SQLite，并等待写队列完成，再 reload，避免旧数据库覆盖新导入的 localStorage。
 - 修复验证：Web 24 个测试文件 156/156，SQLite 定向测试 12/12，格式检查、定向 ESLint、`git diff --check`、Vite 生产构建和 Cargo release 构建通过；0.3.0 修复版已安装并启动。
 - 阶段边界：P5A 收口完成；未进入 P5B/P5C/P5D，后续云端、签名和公开发布仍需单独授权。
+
+### P5B staging OAuth 单用户门禁通过（2026-07-28）
+
+状态：**独立 staging 项目的迁移、RLS、Auth Hook、GitHub OAuth 与单用户真实登录已通过；双用户隔离和客户端 transport 尚未完成。**
+
+- staging 项目为 `fuck-ddl-staging`（project ref：`vsrdkbjqjqmncgpbdqod`）；原项目 `pmxminhiaargbwbfnvpj` 未修改，也未创建生产资源。
+- 三份迁移均执行成功；13 张预期 `public` 表存在并启用 RLS，12 张用户数据表具有 owner 隔离策略。
+- `Before User Created` Hook 已启用，目标为 `public.hook_restrict_github_signup`；GitHub 数字 ID `246487156`（`greatzhu-cyber`）已通过幂等 SQL 加入 staging 白名单并保持启用。
+- staging GitHub OAuth App `Fuck DDL Staging` 已创建；Supabase GitHub Provider 显示 `Enabled`，回调为 `https://vsrdkbjqjqmncgpbdqod.supabase.co/auth/v1/callback`。Client Secret 未读取、未输出、未写入仓库。
+- 本地测试 Redirect URL `http://127.0.0.1:5173/**` 已加入允许列表；真实 GitHub OAuth 成功返回本地网页，账户菜单显示 `greatzhu-cyber` 与“GitHub 已授权”，刷新后会话仍恢复。
+- staging `auth.users` 只读核验确认 `provider_id=246487156`、`user_name=greatzhu-cyber`，创建时间与最近登录时间均已写入。
+- 下一门禁：准备第二个 GitHub 测试账号加入白名单，完成两名真实用户的跨用户读写拒绝、同用户读写成功和客户端 transport 验收。P5C 签名与 P5D 公开发布仍未启动。
+
+### P5B staging 第二用户与 cloud-state transport 候选（2026-07-29）
+
+状态：**第二个真实 GitHub 用户、白名单拒绝门禁、客户端 transport 候选和自动化门禁已完成；真实 cloud_state 读写与双用户跨用户隔离尚待验收，P5B 未完成。**
+
+- 未在白名单中的 `jingrruizhu` 首次 OAuth 注册被 `Before User Created` Hook 明确拒绝，返回 `This GitHub account is not invited.`；该拒绝发生在加入白名单之前，未用合成 JWT 代替。
+- 公开 GitHub 资料确认第二账号数字 ID 为 `310461428`；该 ID 已用幂等 SQL 写入 staging `github_allowlist` 并返回 `enabled=true`。再次 OAuth 后，应用账户菜单显示 `jingrruizhu` 与“GitHub 已授权”。
+- staging `auth.users` 只读核验现有两个真实用户：`greatzhu-cyber`（UUID `e834e1ed-a941-4ba3-8760-9a9d7029b490`）和 `jingrruizhu`（UUID `e1ab5b27-b823-4c64-aad7-ada05b1a0843`）。未读取或输出 Cookie、Supabase 会话令牌、GitHub 密码或 Client Secret。
+- 网页账户菜单已接入手动 `cloud_state` transport：只读取 `createBackupDocument(...).state` 中合法的 `fuck-ddl:v1:*` 版本化业务状态；本地独有和远端独有项无冲突合并，真正冲突默认保持，必须选择“使用此设备数据”或“使用云端数据”。远端恢复前保存本地回退快照；桌面恢复还要求 SQLite 写回成功后才 reload。
+- 自动验证通过：定向 Prettier、ESLint、Web 25 个测试文件 160/160、Vite 生产构建、`git diff --check`。测试覆盖认证键排除、本地独有、远端独有、相同、冲突 hold、local-wins、remote-wins、认证用户 ID 和 Supabase/RLS 错误传播。
+- 当前人工门禁：自动化浏览器因 OAuth 回调标签页安全策略拒绝继续读取本地页，因此尚未把真实 cloud_state 写入宣称为通过。需用户在当前 `jingrruizhu` 本地 staging 页面刷新后，打开账户菜单并点击“检查并同步”；随后再切换 `greatzhu-cyber`，完成同用户读写成功以及 A/B 互相无法读取、更新、删除对方数据的真实 RLS 验证。
+- 阶段边界：仅使用 `fuck-ddl-staging`（`vsrdkbjqjqmncgpbdqod`）；原项目 `pmxminhiaargbwbfnvpj` 未修改。P5C 签名和 P5D 公开发布未启动。
+
+### P5B staging 双用户真实读写与 RLS 隔离门禁（2026-07-29）
+
+状态：**双用户真实 cloud_state 读写、幂等同步和双向 RLS 隔离均已通过，用户已明确验收；P5B 完成。**
+
+- `jingrruizhu` 首次真实同步上传 21 项、恢复 0 项且无冲突；第二次同步上传 0 项、恢复 0 项。后台核验为 21 行、21 个不同键，均属于 `fuck-ddl:v1:*`、`version=1` 且未删除。
+- 在 `greatzhu-cyber` 名下预置非空 `fuck-ddl:v1:rls-probe` 后，以 `jingrruizhu` 真实会话执行跨用户读取、更新、删除，客户端均返回 0；后台复核探针仍为 `version=1`、未删除且更新时间未变化。
+- `greatzhu-cyber` 首次同步后后台共有 22 行、22 个不同键，其中 21 行是业务状态、1 行是 RLS 探针；第二次同步上传 0 项、恢复 0 项，证明同用户写入和幂等路径正常。
+- 在 `jingrruizhu` 名下预置非空同名探针后，以 `greatzhu-cyber` 真实会话执行反向读取、更新、删除，客户端均返回 0；后台复核该探针仍为 `version=1`、`deleted_at=NULL`，更新时间保持为创建时刻。
+- 新增 staging 专用 RLS 检查入口和 `probeIsolation` 契约测试。自动门禁通过：Prettier、ESLint、Schema、`git diff --check`、Web 25 个测试文件 161/161 和 P5B Vite 构建。
+- 安全边界：全程只操作独立 staging 项目；未读取或记录 Cookie、GitHub 密码、Client Secret 或 service-role key。原项目未修改，P5C 签名和 P5D 公开发布未启动。
+
+### P5B 用户验收与 P5C/P5D 启动（2026-07-30）
+
+状态：**用户明确回复“通过”，P5B 完成；用户同时授权启动 P5C 和 P5D。**
+
+- P5B 退出门禁：两名真实 GitHub 用户的同用户写入、重复同步幂等、双向跨用户读取/更新/删除拒绝及后台非空探针完整性均有真实 staging 证据。
+- P5C 启动审计：Windows SDK `signtool.exe` 已安装；CurrentUser/LocalMachine 证书存储均未发现带私钥的代码签名证书，因此当前不能生成受 Windows 公信的正式签名。不得用自签名证书冒充公开发布签名。
+- P5D 启动审计：本地仓库当前没有 Git remote，GitHub CLI 未安装；项目文档要求先指定发布仓库、版本和可见性。生产 Supabase URL/publishable key、生产 OAuth 回调与 Tauri updater 配置均尚未建立。
+- 当前可继续动作：收口并提交已验收的 P5B 代码，运行完整质量门，从明确提交重建 0.3.0 未签名候选并生成哈希；正式签名、生产云资源和公开上传需在目标与凭据条件明确后执行。

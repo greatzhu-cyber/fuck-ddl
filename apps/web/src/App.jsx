@@ -106,6 +106,10 @@ import {
   downloadBackupDocument,
   restoreBackupDocument,
 } from "./backup.js";
+import {
+  applyCloudRemoteState,
+  createSupabaseCloudStateClient,
+} from "./cloud-state.js";
 import { saveDesktopBackup } from "./desktop-backup.js";
 import {
   DESKTOP_DATABASE_STATUS_EVENT,
@@ -121,6 +125,9 @@ import {
 } from "./grades.js";
 
 const DESKTOP_EXIT_REQUEST_EVENT = "fuck-ddl:desktop-exit-request";
+const P5B_RLS_TARGET_USER_ID = String(
+  import.meta.env.VITE_P5B_RLS_TARGET_USER_ID ?? "",
+).trim();
 
 const navItems = [
   { id: "deadlines", label: "最近 DDL", icon: Clock },
@@ -1014,6 +1021,12 @@ export function App() {
   );
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
+  const [cloudSyncBusy, setCloudSyncBusy] = useState(false);
+  const [cloudSyncError, setCloudSyncError] = useState("");
+  const [cloudSyncResult, setCloudSyncResult] = useState(null);
+  const [cloudProbeBusy, setCloudProbeBusy] = useState(false);
+  const [cloudProbeError, setCloudProbeError] = useState("");
+  const [cloudProbeResult, setCloudProbeResult] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [activeSyncMode, setActiveSyncMode] = useState("tasks");
   const [syncDebugLines, setSyncDebugLines] = useState([]);
@@ -1095,6 +1108,10 @@ export function App() {
       if (!alive) return;
       setAuthUser(session?.user ?? null);
       setAuthStatus("ready");
+      setCloudSyncError("");
+      setCloudSyncResult(null);
+      setCloudProbeError("");
+      setCloudProbeResult(null);
     });
     return () => {
       alive = false;
@@ -1122,6 +1139,100 @@ export function App() {
     else setAccountOpen(false);
     setAuthBusy(false);
   }, [supabaseAuth]);
+
+  const runCloudSync = useCallback(
+    async (strategy = "manual") => {
+      if (!supabaseAuth || !authUser?.id) return;
+      setCloudSyncBusy(true);
+      setCloudSyncError("");
+      try {
+        const localState = createBackupDocument(window.localStorage).state;
+        const cloud = createSupabaseCloudStateClient({
+          client: supabaseAuth,
+          userId: authUser.id,
+        });
+        const result = await cloud.syncState(localState, { strategy });
+        const summary = {
+          strategy,
+          checkedAt: new Date().toLocaleTimeString("zh-CN", {
+            hour12: false,
+          }),
+          localOnly: result.localOnly.length,
+          remoteOnly: result.remoteOnly.length,
+          same: result.same.length,
+          conflicts: result.conflicts.length,
+          pushed: result.pushed.length,
+          applied: 0,
+        };
+
+        if (strategy === "manual" && result.conflicts.length > 0) {
+          setCloudSyncResult(summary);
+          return;
+        }
+
+        if (result.applyRemote.length > 0) {
+          window.localStorage.setItem(
+            "fuck-ddl:backup:pre-cloud-sync",
+            JSON.stringify(createBackupDocument(window.localStorage)),
+          );
+          summary.applied = applyCloudRemoteState(
+            window.localStorage,
+            result.applyRemote,
+          );
+          if (isTauriDesktop()) {
+            const persisted = await persistDesktopStateEntries(
+              result.applyRemote.map(({ stateKey, encodedValue }) => [
+                stateKey,
+                encodedValue,
+              ]),
+            );
+            if (!persisted)
+              throw new Error("desktop-cloud-state-not-persisted");
+          }
+        }
+
+        setCloudSyncResult(summary);
+        if (summary.applied > 0) {
+          setToast(`已从云端恢复 ${summary.applied} 项，正在重新加载`);
+          window.setTimeout(() => window.location.reload(), 600);
+        } else {
+          setToast(
+            summary.pushed > 0
+              ? `云端同步完成，已上传 ${summary.pushed} 项`
+              : "云端数据已是最新",
+          );
+        }
+      } catch (error) {
+        const message = String(error?.message ?? "");
+        setCloudSyncError(
+          /row.level security|permission|not authorized|jwt/i.test(message)
+            ? "云端拒绝了本次读写，请重新登录后再试。"
+            : "云端同步失败，当前设备数据未被覆盖。",
+        );
+      } finally {
+        setCloudSyncBusy(false);
+      }
+    },
+    [authUser?.id, supabaseAuth],
+  );
+
+  const runCloudRlsProbe = useCallback(async () => {
+    if (!supabaseAuth || !authUser?.id || !P5B_RLS_TARGET_USER_ID) return;
+    setCloudProbeBusy(true);
+    setCloudProbeError("");
+    setCloudProbeResult(null);
+    try {
+      const cloud = createSupabaseCloudStateClient({
+        client: supabaseAuth,
+        userId: authUser.id,
+      });
+      setCloudProbeResult(await cloud.probeIsolation(P5B_RLS_TARGET_USER_ID));
+    } catch {
+      setCloudProbeError("RLS 隔离检查失败，已停止后续验证。");
+    } finally {
+      setCloudProbeBusy(false);
+    }
+  }, [authUser?.id, supabaseAuth]);
 
   useEffect(() => {
     stateRef.current = focusState;
@@ -2849,10 +2960,83 @@ export function App() {
                   <strong>
                     {githubUser.login || authUser.email || "GitHub 用户"}
                   </strong>
-                  <span>GitHub 已授权 · 云端同步将在下一阶段接入</span>
+                  <span>GitHub 已授权 · staging 手动同步</span>
+                  <section className="cloud-sync-panel" aria-label="云端同步">
+                    <div className="cloud-sync-heading">
+                      <strong>云端同步</strong>
+                      {cloudSyncResult?.checkedAt && (
+                        <small>{cloudSyncResult.checkedAt}</small>
+                      )}
+                    </div>
+                    <span>
+                      {cloudSyncResult
+                        ? cloudSyncResult.conflicts > 0
+                          ? `已上传 ${cloudSyncResult.pushed} 项，发现 ${cloudSyncResult.conflicts} 项冲突`
+                          : `已上传 ${cloudSyncResult.pushed} 项 · 已恢复 ${cloudSyncResult.applied} 项`
+                        : "仅同步版本化业务数据，不上传登录状态。"}
+                    </span>
+                    <button
+                      className="cloud-sync-primary"
+                      onClick={() => void runCloudSync("manual")}
+                      disabled={authBusy || cloudSyncBusy}
+                    >
+                      <ArrowsClockwise />
+                      {cloudSyncBusy ? "同步中…" : "检查并同步"}
+                    </button>
+                    {cloudSyncResult?.conflicts > 0 && (
+                      <div className="cloud-sync-conflict" role="status">
+                        <span>
+                          冲突项不会自动覆盖；仅冲突项按你的选择处理。
+                        </span>
+                        <div>
+                          <button
+                            onClick={() => void runCloudSync("local-wins")}
+                            disabled={cloudSyncBusy}
+                          >
+                            使用此设备数据
+                          </button>
+                          <button
+                            onClick={() => void runCloudSync("remote-wins")}
+                            disabled={cloudSyncBusy}
+                          >
+                            使用云端数据
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {P5B_RLS_TARGET_USER_ID && (
+                      <>
+                        <button
+                          onClick={() => void runCloudRlsProbe()}
+                          disabled={cloudSyncBusy || cloudProbeBusy}
+                        >
+                          <WarningCircle />
+                          {cloudProbeBusy ? "隔离检查中…" : "运行 RLS 隔离检查"}
+                        </button>
+                        {cloudProbeResult && (
+                          <span className="cloud-rls-result" role="status">
+                            隔离检查通过 · 读取 {cloudProbeResult.visible} /
+                            更新 {cloudProbeResult.updated} / 删除{" "}
+                            {cloudProbeResult.deleted}
+                          </span>
+                        )}
+                        {cloudProbeError && (
+                          <p className="account-error" role="alert">
+                            {cloudProbeError}
+                          </p>
+                        )}
+                      </>
+                    )}
+                    {cloudSyncError && (
+                      <p className="account-error" role="alert">
+                        {cloudSyncError}
+                      </p>
+                    )}
+                  </section>
                   <button
+                    className="account-sign-out"
                     onClick={() => void signOutGithub()}
-                    disabled={authBusy}
+                    disabled={authBusy || cloudSyncBusy || cloudProbeBusy}
                   >
                     <SignOut /> 退出登录
                   </button>
