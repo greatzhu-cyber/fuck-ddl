@@ -86,7 +86,7 @@
 ## P5B 完成与 P5C/P5D 启动审计（2026-07-30）
 
 - [x] P5B 双用户真实 OAuth、cloud_state 同用户读写、幂等同步和双向 RLS 隔离通过，并获用户明确验收。
-- [x] Windows SDK `signtool.exe` 可用。
+- [x] Windows SDK `signtool.exe` 可用；`scripts/build-signed-windows-release.ps1` 已通过语法和无证书失败即停测试。
 - [ ] 正式代码签名证书：CurrentUser/LocalMachine 均未发现可用代码签名证书；不得以自签名证书替代公开发布公信签名。
 - [ ] 发布仓库与可见性：当前 Git 仓库无 remote，GitHub CLI 未安装，用户尚未指定 owner/repo 及 public/private。
 - [ ] 生产云配置：目前只有独立 staging 项目；正式客户端的 Supabase URL、publishable key、OAuth 回调和生产迁移尚未配置。

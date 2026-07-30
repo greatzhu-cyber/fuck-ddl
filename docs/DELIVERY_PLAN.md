@@ -219,7 +219,7 @@ P5A 当前退出门禁：优雅退出代码路径已验证，安装版实机保�
 
 - [x] 双用户真实 cloud_state 同用户读写、幂等同步和双向 RLS 隔离。
 - [x] P5B 自动门禁：Web 25 个测试文件 161/161、Prettier、ESLint、Schema、P5B Vite 构建和差异检查。
-- [x] 检测 Windows SDK 签名工具。
+- [x] 检测 Windows SDK 签名工具；新增失败即停的正式签名构建脚本，并通过语法与无证书拒绝测试。
 - [ ] 获取或连接受信任代码签名证书并完成安装器/可执行文件签名验证。
 - [ ] 指定 GitHub owner/repo、public/private 和正式发布目标。
 - [ ] 建立独立 production Supabase/OAuth 配置及 Tauri updater 配置。

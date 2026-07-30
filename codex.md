@@ -1232,4 +1232,4 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - P5B 退出门禁：两名真实 GitHub 用户的同用户写入、重复同步幂等、双向跨用户读取/更新/删除拒绝及后台非空探针完整性均有真实 staging 证据。
 - P5C 启动审计：Windows SDK `signtool.exe` 已安装；CurrentUser/LocalMachine 证书存储均未发现带私钥的代码签名证书，因此当前不能生成受 Windows 公信的正式签名。不得用自签名证书冒充公开发布签名。
 - P5D 启动审计：本地仓库当前没有 Git remote，GitHub CLI 未安装；项目文档要求先指定发布仓库、版本和可见性。生产 Supabase URL/publishable key、生产 OAuth 回调与 Tauri updater 配置均尚未建立。
-- 当前可继续动作：收口并提交已验收的 P5B 代码，运行完整质量门，从明确提交重建 0.3.0 未签名候选并生成哈希；正式签名、生产云资源和公开上传需在目标与凭据条件明确后执行。
+- 发布基线已形成：P5B 提交为 `97975ada300541a09f6e87835a72951d9ba5d8ca`；`pnpm check`、桌面 Rust 33/33、Native Host 6/6、两套 Clippy 和 Edge 冒烟/构建通过。从该提交重建的 0.3.0 NSIS 候选为 3,345,456 bytes，SHA256 `0D438BCC137AD2712F6752C6A5B355056518D9128A6AF370028188B61F6DCDA4`，当前仍为 `NotSigned`。新增失败即停签名脚本并通过语法与无证书拒绝测试；正式签名、生产云资源和公开上传仍等待目标与凭据条件。
