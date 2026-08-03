@@ -21,7 +21,7 @@
 
 - 授权边界：P5C/P5D 已获启动授权；正式签名仍需受信任证书，公开发布仍需明确仓库、可见性与生产配置，系统网络设置不在授权范围。
 - 最新复核（2026-08-03）：P5C 签名脚本、`signtool.exe` 和无证书失败即停门禁复核通过；当前用户证书存储仍没有可用代码签名证书，0.3.0 安装器、桌面 EXE 和 Native Host 仍为 `NotSigned`，因此尚不能生成正式签名发布物。GitHub CLI 当前认证已失效，远端 Actions/Release 的实时复核需用户在官方登录界面重新授权后再做。
-- CI 基线修复（2026-08-03）：仓库默认分支为 `master`，`.github/workflows/ci.yml` 的 push 触发范围已调整为 `[main, master]`；本地 `git diff --check` 和定向配置检查通过，待 GitHub 认证恢复后提交并验证 Actions 实际运行。
+- CI 基线修复（2026-08-03）：仓库默认分支为 `master`，`.github/workflows/ci.yml` 的 push 触发范围已调整为 `[main, master]`；提交 `726e8e8` 已在 GitHub Actions 运行 `30819099214` 中完成 `success`，分支触发与完整质量门均已得到远端验证。
 - CI 首次真实运行（2026-08-03）：提交 `b4f5125` 已由 `master` 触发 Actions，但 `pnpm check` 在 Prettier 阶段失败；干净 Windows checkout 已复现同一问题，根因为文本文件换行转换使 `.prettierignore` 规则失效，不能将该运行记为通过。
 
 ## 当前执行计划
@@ -1245,6 +1245,15 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - `scripts\build-signed-windows-release.ps1` 语法检查通过；使用不存在的测试指纹执行 `-PreflightOnly` 按预期拒绝，未进入构建或签名流程，证明 fail-closed 逻辑仍生效。
 - 当前 0.3.0 安装器、桌面 EXE 和 Native Host 均为 `NotSigned`；未创建、上传或宣称任何未签名公开发布物。
 - 发现并修复 CI 分支门禁遗漏：默认分支 `master` 现在与 `main` 一并触发 push CI。`git diff --check` 与定向配置检查通过；该修复尚待提交、推送并由 GitHub Actions 实际执行验证。
-- 首次远端运行 `30818161047` 已确认触发链路有效，但唯一失败步骤为 `pnpm format:check`；在 `C:\tmp\fuck-ddl-ci-repro-20260803` 的干净副本中复现，发现 Windows `core.autocrlf=true` 将 `.prettierignore` 检出为 CRLF，导致 107 个文件被误报格式问题。已新增根目录 `.gitattributes`，统一文本文件为 LF；本地 `git diff --check`、属性检查和 `pnpm format:check` 均通过，待重新提交并由远端复跑确认。
+- 首次远端运行 `30818161047` 已确认触发链路有效，但唯一失败步骤为 `pnpm format:check`；在 `C:\tmp\fuck-ddl-ci-repro-20260803` 的干净副本中复现，发现 Windows `core.autocrlf=true` 将 `.prettierignore` 检出为 CRLF，导致 107 个文件被误报格式问题。已新增根目录 `.gitattributes`，统一文本文件为 LF；本地完整 `pnpm check` 通过，修复提交 `726e8e8` 对应远端运行 `30819099214` 已 `success`。
 - 本轮 `gh auth status` 显示 `greatzhu-cyber` 的 CLI 认证令牌已失效，GitHub API 同时受限；未读取、输出或索取任何密码、Token、OAuth Client Secret 或设备码。需用户在官方 GitHub 登录流程完成 CLI 重新授权后，才能继续远端验证。
 - 阶段边界：P5C 不因本地预检通过而宣称“正式签名发布完成”；P5D 生产迁移、生产 OAuth 与公开发布继续保持未完成状态。
+
+### P5C CI 远端复验收口（2026-08-03）
+
+状态：**CI 分支触发与完整质量门已通过真实 GitHub Actions 验证；P5C 正式签名仍被受信任证书缺失阻塞。**
+
+- `master` 推送触发已验证：提交 `726e8e8797c234bdfeee371990aa59519fa07194` 触发运行 `30819099214`，GitHub Actions 返回 `completed / success`。
+- 该运行包含锁定依赖安装和 `pnpm check`，首次失败的 CRLF/忽略规则问题已消除；未通过跳过检查或修改质量门解决。
+- 本地同一修复提交的 `pnpm check`、`git diff --check` 和 `.gitattributes` 属性检查均通过。
+- P5C 剩余门禁：Windows 代码签名证书及私钥仍不存在；安装器、桌面 EXE、Native Host 仍不得宣称为正式签名发布物。P5D 生产云配置和公开发布仍未完成。
