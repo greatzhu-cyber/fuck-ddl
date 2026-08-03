@@ -2,7 +2,7 @@
 
 作者：zhu
 邮箱：1976114118@qq.com
-更新时间：2026-07-30
+更新时间：2026-08-03
 当前版本：`0.3.0`
 当前阶段：P0→P4 完成；P5A 完成；P5B staging 完成；P5C/P5D 已授权并进入发布准备
 
@@ -20,6 +20,8 @@
 - 可复现性：候选来源已可追溯，原“工作区不可复现”阻塞已解决；尚未通过两次独立干净重建比较验证 NSIS 的逐字节确定性。
 
 - 授权边界：P5C/P5D 已获启动授权；正式签名仍需受信任证书，公开发布仍需明确仓库、可见性与生产配置，系统网络设置不在授权范围。
+- 最新复核（2026-08-03）：P5C 签名脚本、`signtool.exe` 和无证书失败即停门禁复核通过；当前用户证书存储仍没有可用代码签名证书，0.3.0 安装器、桌面 EXE 和 Native Host 仍为 `NotSigned`，因此尚不能生成正式签名发布物。GitHub CLI 当前认证已失效，远端 Actions/Release 的实时复核需用户在官方登录界面重新授权后再做。
+- CI 基线修复（2026-08-03）：仓库默认分支为 `master`，`.github/workflows/ci.yml` 的 push 触发范围已调整为 `[main, master]`；本地 `git diff --check` 和定向配置检查通过，待 GitHub 认证恢复后提交并验证 Actions 实际运行。
 
 ## 当前执行计划
 
@@ -1233,3 +1235,14 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - P5C 启动审计：Windows SDK `signtool.exe` 已安装；CurrentUser/LocalMachine 证书存储均未发现带私钥的代码签名证书，因此当前不能生成受 Windows 公信的正式签名。不得用自签名证书冒充公开发布签名。
 - P5D 启动审计：本地仓库当前没有 Git remote，GitHub CLI 未安装；项目文档要求先指定发布仓库、版本和可见性。生产 Supabase URL/publishable key、生产 OAuth 回调与 Tauri updater 配置均尚未建立。
 - 发布基线已形成：P5B 提交为 `97975ada300541a09f6e87835a72951d9ba5d8ca`；`pnpm check`、桌面 Rust 33/33、Native Host 6/6、两套 Clippy 和 Edge 冒烟/构建通过。从该提交重建的 0.3.0 NSIS 候选为 3,345,456 bytes，SHA256 `0D438BCC137AD2712F6752C6A5B355056518D9128A6AF370028188B61F6DCDA4`，当前仍为 `NotSigned`。新增失败即停签名脚本并通过语法与无证书拒绝测试；正式签名、生产云资源和公开上传仍等待目标与凭据条件。
+
+### P5C 复核与 CI 触发修复（2026-08-03）
+
+状态：**P5C 本地复核通过；正式签名条件未满足，GitHub 实际 Actions 验证待重新认证；P5D 仍未完成。**
+
+- `signtool.exe` 仍可用；`Cert:\CurrentUser\My` 与 `Cert:\LocalMachine\My` 均未发现带私钥的代码签名证书。
+- `scripts\build-signed-windows-release.ps1` 语法检查通过；使用不存在的测试指纹执行 `-PreflightOnly` 按预期拒绝，未进入构建或签名流程，证明 fail-closed 逻辑仍生效。
+- 当前 0.3.0 安装器、桌面 EXE 和 Native Host 均为 `NotSigned`；未创建、上传或宣称任何未签名公开发布物。
+- 发现并修复 CI 分支门禁遗漏：默认分支 `master` 现在与 `main` 一并触发 push CI。`git diff --check` 与定向配置检查通过；该修复尚待提交、推送并由 GitHub Actions 实际执行验证。
+- 本轮 `gh auth status` 显示 `greatzhu-cyber` 的 CLI 认证令牌已失效，GitHub API 同时受限；未读取、输出或索取任何密码、Token、OAuth Client Secret 或设备码。需用户在官方 GitHub 登录流程完成 CLI 重新授权后，才能继续远端验证。
+- 阶段边界：P5C 不因本地预检通过而宣称“正式签名发布完成”；P5D 生产迁移、生产 OAuth 与公开发布继续保持未完成状态。
