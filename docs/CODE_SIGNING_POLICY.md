@@ -22,13 +22,15 @@ The product name must be `Fuck DDL`, and all product-version metadata produced b
 
 ## Verifiable build and release process
 
-1. A release is built from a versioned Git commit in this repository by the configured GitHub Actions workflow.
+For signed releases:
+
+1. A release is built from a versioned Git commit in this repository by the configured GitHub Actions and SignPath workflow.
 2. The workflow runs the repository quality gates before producing release artifacts.
-3. SignPath receives only artifacts produced by that workflow; arbitrary local binaries are not eligible for signing.
+3. SignPath receives only artifacts produced by that controlled workflow; arbitrary local binaries are not eligible for signing.
 4. The signing approver manually reviews and approves every signing request.
 5. The release records the source commit, artifact SHA256 values and signature verification result.
 
-The `v0.3.0-unsigned-preview` bootstrap release is intentionally unsigned and exists only to document the already released artifact form during the SignPath Foundation application. It must not be represented as a signed stable release. After approval, stable Windows releases must pass SignPath signing and Authenticode verification before publication.
+The `v0.3.0-unsigned-preview` bootstrap release is an explicit one-time exception created for the SignPath Foundation application. It was built locally from tagged commit `68881a9` after the same local quality gates and the matching GitHub CI run passed. It is intentionally unsigned, is not eligible for signing or promotion in place, and must not be represented as a signed stable release. After approval, stable Windows releases must pass the controlled SignPath workflow and Authenticode verification before publication.
 
 ## Privacy and security
 

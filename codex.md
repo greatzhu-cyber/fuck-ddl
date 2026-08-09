@@ -1318,3 +1318,15 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 重新核验 0.3.0 候选：NSIS 3,353,420 bytes，SHA256 `C035E4672BD17B25A76A2BB6E292650FEB0E9B2A6862701B4AE6571D655381F3`；桌面 EXE SHA256 `BAECEFB79D92CEA5732A880C40139CC75C35D6483BDBA68E91D401ED54628179`；Native Host SHA256 `4BBC2CCF1E922CE057AC89982883F00F75C170582E84B038B543D141E2B78669`。
 - 当前 `Cert:\CurrentUser\My` 和 `Cert:\LocalMachine\My` 均没有代码签名证书；三项 Windows 产物均实测为 `NotSigned`。不创建自签名证书，不上传未签名安装器冒充正式 Release。
 - 取得受信任代码签名证书并导入当前用户 Personal 存储后，下一次只需运行 `scripts/build-signed-windows-release.ps1`，验证三项 Authenticode 为 `Valid`，再创建正式 Release；在此之前没有剩余可安全自动完成的 phase 工作。
+
+### P5C/P5D SignPath bootstrap 预发行（2026-08-09）
+
+状态：**仓库公开、MIT 开源化和 0.3.0 未签名 bootstrap 预发行已完成；正式 SignPath 签名与稳定发布仍待审核和受控 CI 接入。**
+
+- 用户明确授权将 `greatzhu-cyber/fuck-ddl` 改为 public、采用 MIT，并发布未签名 0.3.0 预发行；本轮没有把该授权扩展为稳定签名发布。
+- 开源准备提交为 `68881a97703d2ccaaadbef91483c1941c3548e19`（`chore: prepare SignPath open-source release`），只包含 MIT、隐私/安全/签名政策和包许可证元数据；未跟踪的 `%SystemDrive%/` 未读取、删除或提交。
+- 发布前秘密模式扫描为零命中。Node 依赖均为 MIT、Apache、ISC、BSD、BlueOak、CC0/CC-BY 等开放许可证；Windows 实际解析的桌面 Rust 355 个包和 Native Host 12 个包均未出现缺失或专有许可证。
+- 本地门禁通过：`pnpm check`、Domain 24/24、Web 162/162、桌面 Rust 35/35、Native Host 6/6、两套 `cargo fmt --check`、两套 Clippy `-D warnings`、Edge 冒烟和构建。GitHub Actions 运行 `31293179225` 对同一提交返回 `completed / success`。
+- 从标签提交重建的 NSIS 为 3,350,680 bytes，SHA256 `8935968D4992031C38032AC9D4C0F3034550B89056DA055992BBF6ABC5DC9104`，ProductVersion/FileVersion 均为 `0.3.0`，Authenticode 为 `NotSigned`。
+- 标签 `v0.3.0-unsigned-preview` 与预发行 `https://github.com/greatzhu-cyber/fuck-ddl/releases/tag/v0.3.0-unsigned-preview` 已创建；GitHub 资产名为 `Fuck.DDL_0.3.0_x64-setup.exe`。从公开下载地址回读 3,350,680 bytes，SHA256 与本地构建完全一致。
+- Release、README 与签名政策均明确写明该资产仅用于 SignPath Foundation 申请，不是稳定签名版。下一步是审阅并提交 SignPath Foundation 申请；获批后再接入受控 CI 签名，逐项核验 Authenticode 为 `Valid` 后创建新的稳定 Release。

@@ -1,11 +1,11 @@
 # P5A 本地发布准备清单
 
 更新时间：2026-08-09
-范围：P5A 本地候选、P5B staging、P5D 生产集成和正式发布前门禁；正式签名与公开 Release 仍必须满足各自退出条件。
+范围：P5A 本地候选、P5B staging、P5D 生产集成、SignPath bootstrap 预发行和正式签名版发布门禁。
 
 ## 当前结论
 
-用户已将新版本号确定为 `0.3.0`。当前生产集成代码已审阅、提交并推送，候选从明确提交重建；P5A/P5B/P5D 的本地和真实云端门禁已通过。P5C 正式签名仍被受信任 Windows Code Signing 证书及私钥缺失阻塞，因此 P5D 公开 Release 暂停。
+用户已将新版本号确定为 `0.3.0`。P5A/P5B/P5D 的本地和真实云端门禁已通过；仓库已采用 MIT 并公开，`v0.3.0-unsigned-preview` 已作为 SignPath Foundation 申请用预发行发布。P5C 正式签名仍等待 SignPath Foundation 审核和受控签名流程，因此稳定签名版 Release 尚未完成。
 
 ## 当前收口（2026-08-09）
 
@@ -13,8 +13,27 @@
 - [x] 桌面/Native/Edge 门禁：桌面 Rust 35/35、Native Host 6/6、格式检查、两套 Clippy、Edge 冒烟和构建。
 - [x] 生产 schema、GitHub OAuth、白名单、桌面回环登录、cloud_state 冲突恢复和重复同步 0/0 幂等。
 - [x] 0.3.0 候选已从生产收口提交重建并完成哈希记录、远端推送和 CI 复验。
-- [ ] P5C 正式签名：当前证书存储没有可访问私钥的受信任代码签名证书；不得用自签名证书替代。
-- [ ] P5D 公开 Release：等待签名候选；签名后才上传安装器并创建正式 Release。
+- [x] 仓库已设为 public，MIT、隐私、安全和代码签名政策已公开。
+- [x] SignPath bootstrap 预发行已创建；安装包明确标注 `NotSigned`，未冒充稳定签名版。
+- [ ] P5C 正式签名：等待 SignPath Foundation 审核和受控 CI 签名接入；不得用自签名证书替代。
+- [ ] P5D 稳定签名版 Release：签名和 Authenticode 验证通过后另行创建。
+
+## SignPath bootstrap 预发行（2026-08-09）
+
+| 项目           | 当前值                                                                            |
+| -------------- | --------------------------------------------------------------------------------- |
+| 公开仓库       | `https://github.com/greatzhu-cyber/fuck-ddl`                                      |
+| 许可证         | MIT                                                                               |
+| 标签           | `v0.3.0-unsigned-preview`                                                         |
+| 标签来源提交   | `68881a97703d2ccaaadbef91483c1941c3548e19`                                        |
+| GitHub Actions | `31293179225`，`completed / success`                                              |
+| Release        | `https://github.com/greatzhu-cyber/fuck-ddl/releases/tag/v0.3.0-unsigned-preview` |
+| GitHub 资产名  | `Fuck.DDL_0.3.0_x64-setup.exe`                                                    |
+| 安装器大小     | 3,350,680 bytes                                                                   |
+| 安装器 SHA256  | `8935968D4992031C38032AC9D4C0F3034550B89056DA055992BBF6ABC5DC9104`                |
+| Authenticode   | `NotSigned`                                                                       |
+| 公开回读校验   | 下载 3,350,680 bytes，SHA256 与本地构建完全一致                                   |
+| 正式发布资格   | 无；该资产仅用于 SignPath Foundation bootstrap 申请，不是稳定签名版               |
 
 ## 候选元数据
 
