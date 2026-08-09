@@ -2,6 +2,8 @@
 name = "fuck-ddl-edge-host"
 version = "0.1.0"
 description = "Native Messaging bridge for Fuck DDL Focus Guard"
+license = "MIT"
+repository = "https://github.com/greatzhu-cyber/fuck-ddl"
 edition = "2021"
 rust-version = "1.77.2"
 

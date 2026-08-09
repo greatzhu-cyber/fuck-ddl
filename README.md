@@ -21,6 +21,18 @@
 
 权威状态、执行规范和完整历史统一记录在 [codex.md](codex.md)。
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
+
+- Committer and reviewer: [@greatzhu-cyber](https://github.com/greatzhu-cyber)
+- Signing approver: [@greatzhu-cyber](https://github.com/greatzhu-cyber)
+- Full policy: [Code signing policy](docs/CODE_SIGNING_POLICY.md)
+- User data: [Privacy Policy](PRIVACY.md)
+- Vulnerability reporting: [Security Policy](SECURITY.md)
+
+The `v0.3.0-unsigned-preview` bootstrap release is intentionally unsigned for the SignPath Foundation application. It is not a signed stable release.
+
 ## 项目骨架
 
 | 路径                           | 内容                                       |
@@ -64,3 +76,7 @@ cargo clippy --manifest-path apps/native-host/Cargo.toml -- -D warnings
 4. 不自动修改代理/VPN；生产云变更和公开发布必须有明确授权并留下核验记录。
 5. 桌面、来源、Edge 和安装行为必须区分自动化、隔离 UI 和真实实机证据。
 6. `apps/native-host/tests/e2e-host.ps1` 会影响桥令牌，不能用于当前真实安装环境。
+
+## License
+
+Fuck DDL is released under the [MIT License](LICENSE).

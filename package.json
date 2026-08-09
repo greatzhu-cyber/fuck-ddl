@@ -2,6 +2,7 @@
   "name": "fuck-ddl",
   "version": "0.3.0",
   "author": "zhu <1976114118@qq.com>",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.7.0",

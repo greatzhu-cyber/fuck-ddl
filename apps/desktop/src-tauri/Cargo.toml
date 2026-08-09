@@ -3,6 +3,8 @@ name = "fuck-ddl"
 version = "0.3.0"
 description = "Deadline-first work recorder for Windows"
 authors = ["zhu <1976114118@qq.com>"]
+license = "MIT"
+repository = "https://github.com/greatzhu-cyber/fuck-ddl"
 edition = "2021"
 rust-version = "1.77.2"
 
