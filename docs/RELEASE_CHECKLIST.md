@@ -92,3 +92,12 @@
 - [ ] 生产云配置：目前只有独立 staging 项目；正式客户端的 Supabase URL、publishable key、OAuth 回调和生产迁移尚未配置。
 - [ ] Tauri 更新通道：尚无 updater endpoint、公钥、签名私钥或更新清单配置。
 - [ ] 在上述条件满足后，从明确发布提交重建、签名、验证、上传，并记录最终 SHA256、Authenticode、Release URL 和回滚步骤。
+
+## P5D 当前收口记录（2026-08-09）
+
+- [x] 生产 Supabase schema、GitHub OAuth、白名单、桌面回环登录和 cloud_state 真实同步已完成；首次冲突按云端优先恢复，随后 0/0 幂等复核通过。
+- [x] 生产变更提交为 `b88814b1`，发布候选记录提交为 `e3ba80a4`；两次提交均已推送到 `greatzhu-cyber/fuck-ddl` 的 `master`。
+- [x] GitHub Actions 运行 `31291315852` 返回 `completed / success`；远端 `check` job 的领域 24/24、Web 25 个测试文件和 162/162 测试全部通过。
+- [x] 当前 0.3.0 候选已从 `b88814b1` 重建：NSIS 3,353,420 bytes，SHA256 `C035E4672BD17B25A76A2BB6E292650FEB0E9B2A6862701B4AE6571D655381F3`；桌面 EXE SHA256 `BAECEFB79D92CEA5732A880C40139CC75C35D6483BDBA68E91D401ED54628179`。
+- [ ] 正式签名：安装器与桌面 EXE 实测均为 `NotSigned`；当前没有受信任代码签名证书和私钥。
+- [ ] 公开 Release：在正式签名条件满足前保持停止，不上传未签名安装器冒充正式发布。

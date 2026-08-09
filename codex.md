@@ -4,7 +4,7 @@
 邮箱：1976114118@qq.com
 更新时间：2026-08-09
 当前版本：`0.3.0`
-当前阶段：P0→P4 完成；P5A 完成；P5B staging 完成；P5D 生产 OAuth、cloud_state 冲突处理与幂等同步已完成；P5C 正式签名和 P5D 公开发布仍待完成
+当前阶段：P0→P4 完成；P5A 完成；P5B staging 完成；P5D 生产 OAuth、cloud_state 冲突处理、幂等同步、提交、推送和 CI 已完成；P5C 正式签名与 P5D 公开 Release 仍待完成
 
 本文是项目唯一的执行契约和进度总账，由原 `codex.md`、`grok.md` 与 `进度文件.md` 完整合并而成。旧结论按历史证据保留，不自动代表当前状态；修改项目之前必须先阅读本文。
 
@@ -19,21 +19,21 @@
 - 当前产物：0.3.0 未签名 NSIS x64 候选已从 `b88814b1` 重建，大小 3,353,420 bytes，SHA256 `C035E4672BD17B25A76A2BB6E292650FEB0E9B2A6862701B4AE6571D655381F3`；桌面 EXE SHA256 `BAECEFB79D92CEA5732A880C40139CC75C35D6483BDBA68E91D401ED54628179`；本轮未安装该候选。
 - 可复现性：候选来源已可追溯，原“工作区不可复现”阻塞已解决；尚未通过两次独立干净重建比较验证 NSIS 的逐字节确定性。
 
-- 授权边界：P5C/P5D 已获启动授权；正式签名仍需受信任证书，公开发布目标已确认是 `greatzhu-cyber/fuck-ddl`，仍需完成提交、CI 和 Release 收口；系统网络设置不在授权范围。
+- 授权边界：P5C/P5D 已获启动授权；正式签名仍需受信任证书，公开发布目标已确认是 `greatzhu-cyber/fuck-ddl`，提交、推送和 CI 已完成，公开 Release 仍需正式签名条件；系统网络设置不在授权范围。
 - 最新复核（2026-08-03）：P5C 签名脚本、`signtool.exe` 和无证书失败即停门禁复核通过；当前用户证书存储仍没有可用代码签名证书，0.3.0 安装器、桌面 EXE 和 Native Host 仍为 `NotSigned`，因此尚不能生成正式签名发布物。GitHub CLI 当前认证已失效，远端 Actions/Release 的实时复核需用户在官方登录界面重新授权后再做。
 - CI 基线修复（2026-08-03）：仓库默认分支为 `master`，`.github/workflows/ci.yml` 的 push 触发范围已调整为 `[main, master]`；提交 `726e8e8` 已在 GitHub Actions 运行 `30819099214` 中完成 `success`，分支触发与完整质量门均已得到远端验证。
 - CI 首次真实运行（2026-08-03）：提交 `b4f5125` 已由 `master` 触发 Actions，但 `pnpm check` 在 Prettier 阶段失败；干净 Windows checkout 已复现同一问题，根因为文本文件换行转换使 `.prettierignore` 规则失效，不能将该运行记为通过。
 
 ## 当前执行计划
 
-| 阶段             | 状态           | 退出门禁                                                                                                   |
-| ---------------- | -------------- | ---------------------------------------------------------------------------------------------------------- |
-| P0 工程基线      | 完成           | 文档统一、目录 README 完成、敏感文件边界明确、全部质量门通过、首个 Git 基线建立                            |
-| P1 桌面可靠性    | 完成           | SQLite 真正落盘，核心流程、重启、损坏降级和备份恢复通过                                                    |
-| P2 来源联合验收  | 完成           | PTA/ZJU 真实任务与成绩幂等、会话保持和本地字段保护通过                                                     |
-| P3 Edge 实机门禁 | 完成           | 未专注拒绝与真实全屏 10 分钟置顶提醒通过                                                                   |
-| P4 架构治理      | 完成           | outbox 离线重放、恢复、幂等和冲突治理及用户实机验收均通过                                                  |
-| P5 云端与发布    | P5C/P5D 收口中 | P5D 生产 OAuth、cloud_state 冲突处理和 0/0 幂等同步已通过；P5C 缺正式证书，P5D 提交/CI/公开 Release 待完成 |
+| 阶段             | 状态           | 退出门禁                                                                                              |
+| ---------------- | -------------- | ----------------------------------------------------------------------------------------------------- |
+| P0 工程基线      | 完成           | 文档统一、目录 README 完成、敏感文件边界明确、全部质量门通过、首个 Git 基线建立                       |
+| P1 桌面可靠性    | 完成           | SQLite 真正落盘，核心流程、重启、损坏降级和备份恢复通过                                               |
+| P2 来源联合验收  | 完成           | PTA/ZJU 真实任务与成绩幂等、会话保持和本地字段保护通过                                                |
+| P3 Edge 实机门禁 | 完成           | 未专注拒绝与真实全屏 10 分钟置顶提醒通过                                                              |
+| P4 架构治理      | 完成           | outbox 离线重放、恢复、幂等和冲突治理及用户实机验收均通过                                             |
+| P5 云端与发布    | P5C/P5D 收口中 | P5D 生产 OAuth、cloud_state 0/0 幂等同步、提交、推送和 CI 已通过；P5C 缺正式证书，公开 Release 待完成 |
 
 ## 当前工作规范
 
@@ -1299,4 +1299,12 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 质量门：`pnpm check` 通过；领域 24/24、Web 25 个测试文件 162/162、Prettier、ESLint、TypeScript、Schema、Vite 生产构建和桌面构建均通过。
 - 从该提交重建的 NSIS：`apps/desktop/src-tauri/target/release/bundle/nsis/Fuck DDL_0.3.0_x64-setup.exe`，3,353,420 bytes，SHA256 `C035E4672BD17B25A76A2BB6E292650FEB0E9B2A6862701B4AE6571D655381F3`；桌面 EXE 为 13,274,624 bytes，SHA256 `BAECEFB79D92CEA5732A880C40139CC75C35D6483BDBA68E91D401ED54628179`。
 - Authenticode 实测：安装器和桌面 EXE 均为 `NotSigned`；没有受信任 Windows 代码签名证书时不生成“正式签名发布物”。
-- 远端状态：`origin` 已配置为 `greatzhu-cyber/fuck-ddl`，但当前 GitHub CLI 不存在，Git Credential Manager 正在等待官方授权；完成后才能推送并核验远端 CI。公开 Release 仍不得在未签名条件下冒充正式发布。
+- 远端状态：`origin` 已配置为 `greatzhu-cyber/fuck-ddl`；提交 `e3ba80a4` 已推送到 `master`，GitHub Actions 运行 `31291315852` 返回 `Success`，总时长 2m15s，Web 报告为 25 个文件/162 个测试全部通过。公开 Release 仍不得在未签名条件下冒充正式发布。
+
+### P5D 提交推送与远端 CI 收口（2026-08-09）
+
+状态：**代码提交、远端推送和 GitHub Actions 真实质量门已通过；公开 Release 因正式签名缺失保持停止。**
+
+- `b88814b1` 完成生产 OAuth/cloud_state 代码与配置收口，`e3ba80a4` 记录发布候选哈希和签名状态；两次提交均已推送到 `greatzhu-cyber/fuck-ddl` 的 `master`。
+- GitHub Actions 运行 `31291315852`（提交 `e3ba80a4`）返回 `completed / success`；远端 `check` job 通过领域 24/24、Web 25/25 文件和 162/162 测试，并完成完整质量门。
+- 公开发布物仍为 `NotSigned`。没有受信任 Windows 代码签名证书和私钥时，不上传安装器作为正式 Release，不用自签名证书替代。
