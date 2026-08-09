@@ -1,3 +1,4 @@
+mod auth;
 mod backup;
 mod edge_bridge;
 mod lifecycle;
@@ -21,6 +22,7 @@ fn complete_desktop_exit(app: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .manage(edge_bridge::EdgeBridgeState::default())
+        .manage(auth::DesktopOAuthCallbackState::default())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .setup(|app| {
@@ -71,6 +73,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             backup::save_local_backup,
+            auth::start_desktop_oauth_callback,
+            auth::open_external_url,
             edge_bridge::set_edge_focus_active,
             pintia::open_pintia_login,
             pintia::reset_pintia_session,

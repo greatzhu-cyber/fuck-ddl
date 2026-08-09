@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 const AUTH_STORAGE_KEY = "fuck-ddl:auth";
 let browserClient = null;
@@ -44,7 +46,7 @@ export function getSupabaseAuthClient({
   browserClient = create(config.url, config.publishableKey, {
     auth: {
       flowType: "pkce",
-      persistSession: !desktop,
+      persistSession: true,
       detectSessionInUrl: !desktop,
       autoRefreshToken: true,
       storageKey: AUTH_STORAGE_KEY,
@@ -75,13 +77,55 @@ export async function signInWithGithub(
     config,
     locationObject = window.location,
     desktop = isDesktopAuthRuntime(),
+    desktopBridge = { invoke, listen },
   } = {},
 ) {
   if (!client) throw new Error("Supabase 登录尚未配置。");
   if (desktop) {
-    throw new Error(
-      "桌面端 GitHub 回调尚未配置；请在网页端登录，或继续使用本地模式。",
+    const redirectUrl = await desktopBridge.invoke(
+      "start_desktop_oauth_callback",
     );
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider: "github",
+      options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
+    });
+    if (error) throw error;
+    if (!data?.url) throw new Error("Supabase 未返回 GitHub 登录地址。");
+    let unlisten = null;
+    try {
+      const callback = new Promise((resolve, reject) => {
+        let timer = null;
+        const finish = (handler, value) => {
+          if (timer) window.clearTimeout(timer);
+          handler(value);
+        };
+        void desktopBridge
+          .listen("fuck-ddl:desktop-oauth-callback", (event) => {
+            finish(resolve, event?.payload ?? {});
+          })
+          .then((stop) => {
+            unlisten = stop;
+          })
+          .catch(reject);
+        timer = window.setTimeout(
+          () => finish(reject, new Error("GitHub 登录等待超时，请重试。")),
+          5 * 60 * 1000,
+        );
+      });
+      await desktopBridge.invoke("open_external_url", { url: data.url });
+      const result = await callback;
+      if (result.error) {
+        throw new Error(result.error_description || result.error);
+      }
+      if (!result.code) throw new Error("GitHub 登录未返回授权 code。");
+      const { error: exchangeError } = await client.auth.exchangeCodeForSession(
+        result.code,
+      );
+      if (exchangeError) throw exchangeError;
+    } finally {
+      if (unlisten) unlisten();
+    }
+    return;
   }
   const { error } = await client.auth.signInWithOAuth({
     provider: "github",

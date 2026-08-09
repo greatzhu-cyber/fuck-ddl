@@ -2,16 +2,16 @@
 
 作者：zhu
 邮箱：1976114118@qq.com
-更新时间：2026-08-03
+更新时间：2026-08-09
 当前版本：`0.3.0`
-当前阶段：P0→P4 完成；P5A 完成；P5B staging 完成；P5C/P5D 已授权并进入发布准备
+当前阶段：P0→P4 完成；P5A 完成；P5B staging 完成；P5D 生产 OAuth、cloud_state 冲突处理与幂等同步已完成；P5C 正式签名和 P5D 公开发布仍待完成
 
 本文是项目唯一的执行契约和进度总账，由原 `codex.md`、`grok.md` 与 `进度文件.md` 完整合并而成。旧结论按历史证据保留，不自动代表当前状态；修改项目之前必须先阅读本文。
 
 ## 当前复核摘要
 
 - 产品定位：Windows 优先的 DDL 工作记录器，核心闭环为任务收集、今日安排、专注计时、工作记录、完成归档和复盘。
-- 当前自动化：Prettier、ESLint、TypeScript、13 表 Schema 契约、领域 24/24、Web 25 个测试文件 161/161、桌面 Rust 33/33、Native Host 6/6、两套 Clippy、生产构建和 Edge 冒烟/构建全部通过。
+- 当前自动化：Prettier、ESLint、TypeScript、13 表 Schema 契约、领域 24/24、Web 25 个测试文件 162/162、桌面 Rust 35/35、Native Host 6/6、两套 Clippy、生产构建和 Edge 冒烟/构建全部通过。
 - P0 已恢复质量基线：修复 3 个过期 ZJU Desktop 测试契约，并统一完成前端与 Rust 格式化。
 - Git 基线：首个可恢复提交为 `f9ada8e`（`chore: establish validated local baseline`）；0.3.0 候选源码提交为 `daad0374d04a62d9dba0943c20d0b256afe2553a`。
 - 桌面实机：0.3.0 已安装并正常运行；版本注册、单实例、动态桥、SQLite 恢复和正常重启保持均已通过。
@@ -19,21 +19,21 @@
 - 当前产物：0.3.0 未签名 NSIS x64 候选已从 `daad0374d04a62d9dba0943c20d0b256afe2553a` 在干净工作区重建，大小 3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；已完成本机升级安装。
 - 可复现性：候选来源已可追溯，原“工作区不可复现”阻塞已解决；尚未通过两次独立干净重建比较验证 NSIS 的逐字节确定性。
 
-- 授权边界：P5C/P5D 已获启动授权；正式签名仍需受信任证书，公开发布仍需明确仓库、可见性与生产配置，系统网络设置不在授权范围。
+- 授权边界：P5C/P5D 已获启动授权；正式签名仍需受信任证书，公开发布目标已确认是 `greatzhu-cyber/fuck-ddl`，仍需完成提交、CI 和 Release 收口；系统网络设置不在授权范围。
 - 最新复核（2026-08-03）：P5C 签名脚本、`signtool.exe` 和无证书失败即停门禁复核通过；当前用户证书存储仍没有可用代码签名证书，0.3.0 安装器、桌面 EXE 和 Native Host 仍为 `NotSigned`，因此尚不能生成正式签名发布物。GitHub CLI 当前认证已失效，远端 Actions/Release 的实时复核需用户在官方登录界面重新授权后再做。
 - CI 基线修复（2026-08-03）：仓库默认分支为 `master`，`.github/workflows/ci.yml` 的 push 触发范围已调整为 `[main, master]`；提交 `726e8e8` 已在 GitHub Actions 运行 `30819099214` 中完成 `success`，分支触发与完整质量门均已得到远端验证。
 - CI 首次真实运行（2026-08-03）：提交 `b4f5125` 已由 `master` 触发 Actions，但 `pnpm check` 在 Prettier 阶段失败；干净 Windows checkout 已复现同一问题，根因为文本文件换行转换使 `.prettierignore` 规则失效，不能将该运行记为通过。
 
 ## 当前执行计划
 
-| 阶段             | 状态           | 退出门禁                                                                        |
-| ---------------- | -------------- | ------------------------------------------------------------------------------- |
-| P0 工程基线      | 完成           | 文档统一、目录 README 完成、敏感文件边界明确、全部质量门通过、首个 Git 基线建立 |
-| P1 桌面可靠性    | 完成           | SQLite 真正落盘，核心流程、重启、损坏降级和备份恢复通过                         |
-| P2 来源联合验收  | 完成           | PTA/ZJU 真实任务与成绩幂等、会话保持和本地字段保护通过                          |
-| P3 Edge 实机门禁 | 完成           | 未专注拒绝与真实全屏 10 分钟置顶提醒通过                                        |
-| P4 架构治理      | 完成           | outbox 离线重放、恢复、幂等和冲突治理及用户实机验收均通过                       |
-| P5 云端与发布    | P5C/P5D 进行中 | P5B 已验收；P5C 缺正式证书，P5D 待指定仓库、可见性与生产配置                    |
+| 阶段             | 状态           | 退出门禁                                                                                                   |
+| ---------------- | -------------- | ---------------------------------------------------------------------------------------------------------- |
+| P0 工程基线      | 完成           | 文档统一、目录 README 完成、敏感文件边界明确、全部质量门通过、首个 Git 基线建立                            |
+| P1 桌面可靠性    | 完成           | SQLite 真正落盘，核心流程、重启、损坏降级和备份恢复通过                                                    |
+| P2 来源联合验收  | 完成           | PTA/ZJU 真实任务与成绩幂等、会话保持和本地字段保护通过                                                     |
+| P3 Edge 实机门禁 | 完成           | 未专注拒绝与真实全屏 10 分钟置顶提醒通过                                                                   |
+| P4 架构治理      | 完成           | outbox 离线重放、恢复、幂等和冲突治理及用户实机验收均通过                                                  |
+| P5 云端与发布    | P5C/P5D 收口中 | P5D 生产 OAuth、cloud_state 冲突处理和 0/0 幂等同步已通过；P5C 缺正式证书，P5D 提交/CI/公开 Release 待完成 |
 
 ## 当前工作规范
 
@@ -1257,3 +1257,36 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 该运行包含锁定依赖安装和 `pnpm check`，首次失败的 CRLF/忽略规则问题已消除；未通过跳过检查或修改质量门解决。
 - 本地同一修复提交的 `pnpm check`、`git diff --check` 和 `.gitattributes` 属性检查均通过。
 - P5C 剩余门禁：Windows 代码签名证书及私钥仍不存在；安装器、桌面 EXE、Native Host 仍不得宣称为正式签名发布物。P5D 生产云配置和公开发布仍未完成。
+
+### P5D 生产 Supabase 迁移收口（2026-08-03）
+
+状态：**生产项目已链接，迁移历史已修复并完成 `cloud_state` 迁移；未进行公开发布。**
+
+- 生产项目：`fuck-ddl-production`，project ref `lakcqfkvedjgokjyqgea`。Supabase CLI 已通过设备授权登录并在项目工作目录完成链接；未读取、保存或输出数据库密码。
+- 迁移前只读核验确认生产库已存在 `core` 与 `grade_records` 创建的表，但远程迁移历史为空；`cloud_state` 表尚不存在。
+- 使用 `migration repair --status applied --linked 20260707000100 20260711000100` 仅补登记前两个已存在迁移，未重复执行建表 SQL。
+- 使用 `db push --linked` 成功应用 `20260727000100_cloud_state.sql`。最终 `migration list --linked` 显示本地与远程三条版本全部一致：`20260707000100`、`20260711000100`、`20260727000100`。
+- 生产只读表统计确认 `public.cloud_state` 已创建，当前估算行数为 0；其余业务表未写入业务数据。
+- `db diff --linked` 因本机 Docker Desktop 未运行而无法执行 shadow database 差异检查，但不影响本次已完成的迁移应用与迁移历史核验。
+- 阶段边界：生产 schema 迁移完成；生产 OAuth、公开发布、正式签名仍未完成。
+
+### P5D 桌面 OAuth 回环登录实现（2026-08-04）
+
+状态：**桌面端 OAuth 代码实现和构建门禁完成；生产 Provider、Redirect URLs 与真实账号登录仍待配置验收。**
+
+- 桌面端不再直接拒绝 GitHub 登录：Tauri 原生层启动一次性 `127.0.0.1:43123` 回环 HTTP 回调，前端通过 Supabase PKCE 获取授权地址，由系统浏览器完成 GitHub 登录，再用回调 code 交换会话。
+- 回调服务只提取 `code`、`error`、`error_description`，不输出或写入日志；认证状态不进入 SQLite 业务镜像、JSON 备份或 `cloud_state`。
+- 外部地址仅允许 `http`/`https`，系统浏览器由 Windows `rundll32.exe` 唤起；WebView CSP 已允许 Supabase API 和本地回环回调。
+- 定向门禁：Web Auth 测试 4/4；Tauri Rust 35/35；`cargo fmt -- --check`、Clippy `-D warnings`、完整 `pnpm check` 和 `pnpm desktop:build` 均通过。
+- 真实配置要求：生产 Supabase Auth Redirect URLs 需允许 `http://127.0.0.1:43123/auth/callback`；GitHub OAuth App 回调需指向生产 Supabase 的 `https://lakcqfkvedjgokjyqgea.supabase.co/auth/v1/callback`；生产客户端环境还需注入生产 URL 与 publishable key。Client Secret 不进入仓库或客户端。
+- 当前边界：尚未在真实生产 Provider 配置下启动桌面安装版完成 GitHub 登录、回调交换和云端同步验收；正式签名和公开发布仍未完成。
+
+### P5D 生产 cloud_state 实际同步与幂等验收（2026-08-09）
+
+状态：**生产 OAuth 登录、cloud_state 首次同步、冲突处理和重复同步幂等门禁已通过；P5D 公开 Release 尚未完成。**
+
+- 在已登录的生产本地页面，以 `greatzhu-cyber` 账户执行“检查并同步”，真实结果为“已上传 1 项，发现 14 项冲突”；应用按契约暂停，没有自动覆盖冲突。
+- 按已确认的安全策略选择“使用云端数据”，页面恢复云端业务状态；恢复后任务列表从本地测试状态切换到云端状态，证明远端恢复路径实际生效。
+- 再次执行“检查并同步”，页面显示“已上传 0 项 · 已恢复 0 项”，且不再出现冲突处理提示；生产同用户重复同步的 0/0 幂等门禁通过。
+- 本轮只同步 `fuck-ddl:v1:*` 版本化业务状态；登录状态、Cookie、密码、Token、Client Secret 和 service-role key 未读取、输出或写入仓库。
+- 下一门禁：审阅并提交当前变更、从提交构建 0.3.0 候选、推送到已配置仓库并核验 CI；正式签名仍等待受信任证书，公开 Release 需在 CI 与发布物核验后进行。

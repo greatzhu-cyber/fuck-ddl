@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   authErrorMessage,
   githubIdentity,
   readSupabaseConfig,
   resolveAuthRedirectUrl,
+  signInWithGithub,
 } from "./auth.js";
 
 describe("Supabase GitHub authentication helpers", () => {
@@ -52,5 +53,46 @@ describe("Supabase GitHub authentication helpers", () => {
     expect(
       authErrorMessage(new Error("This GitHub account is not invited.")),
     ).toBe("这个 GitHub 账号不在允许名单中。");
+  });
+
+  it("completes desktop OAuth through the loopback callback", async () => {
+    let callbackHandler;
+    const bridge = {
+      invoke: vi.fn(async (command) => {
+        if (command === "start_desktop_oauth_callback") {
+          return "http://127.0.0.1:43123/auth/callback";
+        }
+        callbackHandler({ payload: { code: "oauth-code" } });
+      }),
+      listen: vi.fn(async (_event, handler) => {
+        callbackHandler = handler;
+        return vi.fn();
+      }),
+    };
+    const client = {
+      auth: {
+        signInWithOAuth: vi.fn().mockResolvedValue({
+          data: { url: "https://github.com/login/oauth/authorize?state=test" },
+          error: null,
+        }),
+        exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+      },
+    };
+
+    await signInWithGithub(client, { desktop: true, desktopBridge: bridge });
+
+    expect(client.auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "github",
+      options: {
+        redirectTo: "http://127.0.0.1:43123/auth/callback",
+        skipBrowserRedirect: true,
+      },
+    });
+    expect(client.auth.exchangeCodeForSession).toHaveBeenCalledWith(
+      "oauth-code",
+    );
+    expect(bridge.invoke).toHaveBeenCalledWith("open_external_url", {
+      url: "https://github.com/login/oauth/authorize?state=test",
+    });
   });
 });

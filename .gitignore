@@ -26,4 +26,5 @@ Desktop.ini
 work/
 tmp/
 apps/web/.npm-cache/
+supabase/.temp/
 misc_lab1_report_complete.tex

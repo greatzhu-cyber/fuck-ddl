@@ -16,6 +16,12 @@ React 19 + Vite 6 的共享界面，同时供浏览器原型和 Tauri WebView �
 - `src/*test*`：Vitest 与 Testing Library 回归；
 - `public`：静态资源和摸鱼提醒页面脚本。
 
+## OAuth
+
+网页端使用配置的 `VITE_AUTH_REDIRECT_URL`。桌面端不把 OAuth code 放进 WebView 地址栏，而是启动一次性的 `127.0.0.1` 回环回调，使用系统浏览器完成 GitHub 登录，再在本地交换 PKCE code。桌面端认证状态不会写入 SQLite 业务镜像、JSON 备份、日志或云端业务表。
+
+Supabase 的 Redirect URLs 需要允许桌面回调地址 `http://127.0.0.1:43123/auth/callback`；GitHub OAuth App 的回调地址仍填写对应 Supabase 项目的固定 `/auth/v1/callback`，而不是回环地址。
+
 ## P4 约束
 
 本批次只治理应用状态与本地存储边界，不改变 PTA/ZJU 任务读取、成绩读取、Edge 读取或云端同步行为。repository 的 outbox/cursor 接口已完成租约栅栏、成功确认、指数退避、过期租约回收和 8 次终止失败；离线重放与冲突策略完成本地边界。真实云端 transport 仍未接入，属于未授权 P5。

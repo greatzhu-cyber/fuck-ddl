@@ -5,7 +5,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.jsx";
 import { encodePersistedState, STORAGE_KEYS } from "./persistence.js";
 import { createCompletionRecord } from "./completion-history.js";
@@ -36,6 +36,7 @@ beforeEach(() => window.localStorage.clear());
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  vi.unstubAllEnvs();
 });
 
 describe("Fuck DDL core interactions", () => {
@@ -68,6 +69,8 @@ describe("Fuck DDL core interactions", () => {
   });
 
   it("states clearly when GitHub cloud login has not been configured", () => {
+    vi.stubEnv("VITE_SUPABASE_URL", "");
+    vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "");
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "账户菜单" }));
     expect(screen.getByText("GitHub 登录未配置")).toBeTruthy();

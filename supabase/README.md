@@ -1,6 +1,6 @@
 # Supabase Contract
 
-本目录保存可审查的 SQL 迁移。P5B 只连接独立 staging 项目 `fuck-ddl-staging`（project ref：`vsrdkbjqjqmncgpbdqod`）；不得把现有项目 `pmxminhiaargbwbfnvpj` 当作 staging，也不得在 P5B 修改生产资源。
+本目录保存可审查的 SQL 迁移。staging 项目为 `fuck-ddl-staging`（project ref：`vsrdkbjqjqmncgpbdqod`），生产项目为 `fuck-ddl-production`（project ref：`lakcqfkvedjgokjyqgea`）；不得把旧项目 `pmxminhiaargbwbfnvpj` 当作 staging 或生产项目。
 
 ## 内容
 
@@ -20,4 +20,22 @@
 
 上述结果仍需用户明确验收后才能宣布 P5B 完成。根目录 `pnpm schema:check` 只是静态契约检查，不能替代远程双用户实测。
 
-不得把数据库密码、service-role key、第三方会话或生产凭据加入仓库。P5B 不创建或修改生产资源；签名和公开部署仍等待用户单独授权。
+不得把数据库密码、service-role key、第三方会话或生产凭据加入仓库。签名、生产 OAuth 配置和公开部署仍需单独授权与验收。
+
+### P5D production schema
+
+2026-08-03 已在生产项目完成 CLI 链接和迁移收口。生产库原有前两个迁移创建的表，但远程迁移历史为空；已使用 `migration repair` 仅登记 `20260707000100` 与 `20260711000100`，随后使用 `db push --linked` 应用 `20260727000100_cloud_state.sql`。最终本地与远程三条迁移版本一致，`public.cloud_state` 已创建且当前为空。
+
+本机 `db diff --linked` 因 Docker Desktop 未运行无法执行 shadow database 差异检查；迁移应用、迁移历史和生产表存在性已通过 CLI 只读核验。
+
+### P5D production OAuth 实际登录（2026-08-09）
+
+生产项目 `fuck-ddl-production` 已完成 GitHub Provider、Redirect URLs、独立生产 OAuth App 和客户端生产配置。生产 GitHub OAuth App 的回调为 `https://lakcqfkvedjgokjyqgea.supabase.co/auth/v1/callback`；桌面回环地址为 `http://127.0.0.1:43123/auth/callback`。Client Secret 只保留在 Supabase 管理后台，未读取、输出或写入仓库。
+
+生产 `public.github_allowlist` 初次只读核验为空；随后使用幂等 SQL 将已确认的 `greatzhu-cyber` 数字 GitHub ID `246487156` 加入并启用。写入后的只读结果为 1 行、`enabled=true`。用户随后完成生产桌面 GitHub OAuth 回环登录，说明 Provider、回调、客户端生产配置和白名单链路已贯通。
+
+### P5D production cloud_state 实际验收
+
+2026-08-09 已在生产本地页面以 `greatzhu-cyber` 完成真实 cloud_state 验收。首次点击“检查并同步”显示已上传 1 项、发现 14 项冲突；应用没有自动覆盖，随后按云端优先策略选择“使用云端数据”，页面成功恢复云端业务状态。恢复后再次同步显示已上传 0 项、已恢复 0 项，且冲突提示消失，生产同用户重复同步幂等通过。
+
+本轮只同步合法的 `fuck-ddl:v1:*` 版本化业务状态；未读取、输出或写入密码、service-role key、GitHub 密码、Cookie、会话或 Client Secret。P5C 正式签名与 P5D 公开 Release 仍未完成。

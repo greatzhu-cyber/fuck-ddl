@@ -5,6 +5,7 @@
 ## 主要内容
 
 - `src/lib.rs` / `src/main.rs`：Tauri 应用入口；
+- `src/auth.rs`：一次性回环 OAuth 回调和系统浏览器唤起；
 - `src/pintia.rs`、`src/zju.rs`：只读来源 WebView 与解析；
 - `src/edge_bridge.rs`：动态回环端点和 Edge 事件校验；
 - `src/backup.rs`：本地 JSON 备份；
@@ -19,4 +20,4 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml -- -D warnings
 ```
 
-当前 32 个 Rust 测试、Rustfmt 和 Clippy 均通过。真实来源测试不得输出会话；学在浙大验收由用户关闭 VPN 后进行。
+当前 35 个 Rust 测试、Rustfmt 和 Clippy 均通过。真实来源测试不得输出会话；学在浙大验收由用户关闭 VPN 后进行。

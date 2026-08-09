@@ -2960,7 +2960,7 @@ export function App() {
                   <strong>
                     {githubUser.login || authUser.email || "GitHub 用户"}
                   </strong>
-                  <span>GitHub 已授权 · staging 手动同步</span>
+                  <span>GitHub 已授权 · 云端同步</span>
                   <section className="cloud-sync-panel" aria-label="云端同步">
                     <div className="cloud-sync-heading">
                       <strong>云端同步</strong>
