@@ -1308,3 +1308,13 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - `b88814b1` 完成生产 OAuth/cloud_state 代码与配置收口，`e3ba80a4` 记录发布候选哈希和签名状态；两次提交均已推送到 `greatzhu-cyber/fuck-ddl` 的 `master`。
 - GitHub Actions 运行 `31291315852`（提交 `e3ba80a4`）返回 `completed / success`；远端 `check` job 通过领域 24/24、Web 25/25 文件和 162/162 测试，并完成完整质量门。
 - 公开发布物仍为 `NotSigned`。没有受信任 Windows 代码签名证书和私钥时，不上传安装器作为正式 Release，不用自签名证书替代。
+
+### P5 全阶段本地复核（2026-08-09）
+
+状态：**所有可在当前环境完成的 phase 门禁已收口；剩余仅为正式证书驱动的 P5C/P5D 发布门禁。**
+
+- 受控权限下重新运行 `pnpm check` 通过：Prettier、ESLint、TypeScript、Schema、领域 24/24、Web 25 个测试文件/162 个测试和 Vite 生产构建全部通过。
+- 补跑桌面 Rust 35/35、Native Host 6/6、两套 `cargo fmt --check`、两套 Clippy `-D warnings`、Edge 冒烟和 Edge 构建，全部通过。
+- 重新核验 0.3.0 候选：NSIS 3,353,420 bytes，SHA256 `C035E4672BD17B25A76A2BB6E292650FEB0E9B2A6862701B4AE6571D655381F3`；桌面 EXE SHA256 `BAECEFB79D92CEA5732A880C40139CC75C35D6483BDBA68E91D401ED54628179`；Native Host SHA256 `4BBC2CCF1E922CE057AC89982883F00F75C170582E84B038B543D141E2B78669`。
+- 当前 `Cert:\CurrentUser\My` 和 `Cert:\LocalMachine\My` 均没有代码签名证书；三项 Windows 产物均实测为 `NotSigned`。不创建自签名证书，不上传未签名安装器冒充正式 Release。
+- 取得受信任代码签名证书并导入当前用户 Personal 存储后，下一次只需运行 `scripts/build-signed-windows-release.ps1`，验证三项 Authenticode 为 `Valid`，再创建正式 Release；在此之前没有剩余可安全自动完成的 phase 工作。

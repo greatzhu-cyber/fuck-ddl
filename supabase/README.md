@@ -2,6 +2,8 @@
 
 本目录保存可审查的 SQL 迁移。staging 项目为 `fuck-ddl-staging`（project ref：`vsrdkbjqjqmncgpbdqod`），生产项目为 `fuck-ddl-production`（project ref：`lakcqfkvedjgokjyqgea`）；不得把旧项目 `pmxminhiaargbwbfnvpj` 当作 staging 或生产项目。
 
+当前状态：P5B staging 双用户隔离与 cloud_state 验收已完成；P5D 生产 schema、GitHub OAuth、白名单、桌面回环登录、冲突恢复和重复同步 0/0 幂等已完成。生产凭据、Client Secret、Cookie、会话和数据库密码不进入仓库；P5C 正式签名与 P5D 公开 Release 仍受 Windows 受信任代码签名证书门禁约束。
+
 ## 内容
 
 - `20260707000100_core.sql`：GitHub 数字 ID 白名单 Hook、核心用户表、软删除、版本字段、操作回执和 RLS；
@@ -18,7 +20,7 @@
 
 客户端已接入 `cloud_state` 手动同步、非冲突合并、显式冲突选择和 staging 专用 RLS 隔离探针。`jingrruizhu` 的 21 个业务状态首次上传和第二次 0/0 幂等同步均通过；`greatzhu-cyber` 也已写入 21 个业务状态并通过第二次 0/0 幂等同步。两名真实用户分别以非空目标探针完成双向跨用户读取、更新、删除检查，六项操作均返回 0；postgres 后台复核两条目标探针均存在、未删除且更新时间未被对方会话改变。自动门禁通过 Web 25 个测试文件 161/161、Prettier、ESLint、Schema、`git diff --check` 和 P5B Vite 构建。
 
-上述结果仍需用户明确验收后才能宣布 P5B 完成。根目录 `pnpm schema:check` 只是静态契约检查，不能替代远程双用户实测。
+上述结果曾等待用户明确验收；用户已完成验收并确认 P5B 通过。根目录 `pnpm schema:check` 只是静态契约检查，不能替代远程双用户实测。
 
 不得把数据库密码、service-role key、第三方会话或生产凭据加入仓库。签名、生产 OAuth 配置和公开部署仍需单独授权与验收。
 
