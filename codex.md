@@ -13,10 +13,10 @@
 - 产品定位：Windows 优先的 DDL 工作记录器，核心闭环为任务收集、今日安排、专注计时、工作记录、完成归档和复盘。
 - 当前自动化：Prettier、ESLint、TypeScript、13 表 Schema 契约、领域 24/24、Web 25 个测试文件 162/162、桌面 Rust 35/35、Native Host 6/6、两套 Clippy、生产构建和 Edge 冒烟/构建全部通过。
 - P0 已恢复质量基线：修复 3 个过期 ZJU Desktop 测试契约，并统一完成前端与 Rust 格式化。
-- Git 基线：首个可恢复提交为 `f9ada8e`（`chore: establish validated local baseline`）；0.3.0 候选源码提交为 `daad0374d04a62d9dba0943c20d0b256afe2553a`。
+- Git 基线：首个可恢复提交为 `f9ada8e`（`chore: establish validated local baseline`）；当前生产 OAuth/cloud_state 收口提交为 `b88814b1`（`feat: finalize production oauth and cloud sync`）。
 - 桌面实机：0.3.0 已安装并正常运行；版本注册、单实例、动态桥、SQLite 恢复和正常重启保持均已通过。
 - 数据边界：当前标准候选继续使用 `%APPDATA%\com.fuckddl.desktop\fuck-ddl.db`；P4 SQLite 恢复测试全部使用内存数据库，不写入真实用户数据。
-- 当前产物：0.3.0 未签名 NSIS x64 候选已从 `daad0374d04a62d9dba0943c20d0b256afe2553a` 在干净工作区重建，大小 3,340,907 bytes，SHA256 `235C6DC792E0F6EFE3B014170D708B9D5DAC4D731F7BD8252F5ED9389DB16D82`；已完成本机升级安装。
+- 当前产物：0.3.0 未签名 NSIS x64 候选已从 `b88814b1` 重建，大小 3,353,420 bytes，SHA256 `C035E4672BD17B25A76A2BB6E292650FEB0E9B2A6862701B4AE6571D655381F3`；桌面 EXE SHA256 `BAECEFB79D92CEA5732A880C40139CC75C35D6483BDBA68E91D401ED54628179`；本轮未安装该候选。
 - 可复现性：候选来源已可追溯，原“工作区不可复现”阻塞已解决；尚未通过两次独立干净重建比较验证 NSIS 的逐字节确定性。
 
 - 授权边界：P5C/P5D 已获启动授权；正式签名仍需受信任证书，公开发布目标已确认是 `greatzhu-cyber/fuck-ddl`，仍需完成提交、CI 和 Release 收口；系统网络设置不在授权范围。
@@ -1290,3 +1290,13 @@ Edge 链路增量验证：域名计时冒烟与扩展构建通过；Native Host 
 - 再次执行“检查并同步”，页面显示“已上传 0 项 · 已恢复 0 项”，且不再出现冲突处理提示；生产同用户重复同步的 0/0 幂等门禁通过。
 - 本轮只同步 `fuck-ddl:v1:*` 版本化业务状态；登录状态、Cookie、密码、Token、Client Secret 和 service-role key 未读取、输出或写入仓库。
 - 下一门禁：审阅并提交当前变更、从提交构建 0.3.0 候选、推送到已配置仓库并核验 CI；正式签名仍等待受信任证书，公开 Release 需在 CI 与发布物核验后进行。
+
+### P5D 生产收口提交与 0.3.0 发布候选（2026-08-09）
+
+状态：**生产同步代码已审阅并提交；本地质量门和从提交构建已通过；远端推送与公开 Release 等待 GitHub 凭据授权和正式签名条件。**
+
+- 提交：`b88814b1`（`feat: finalize production oauth and cloud sync`）；明确暂存 14 个项目文件，未跟踪的 `%SystemDrive%` 目录未纳入提交。
+- 质量门：`pnpm check` 通过；领域 24/24、Web 25 个测试文件 162/162、Prettier、ESLint、TypeScript、Schema、Vite 生产构建和桌面构建均通过。
+- 从该提交重建的 NSIS：`apps/desktop/src-tauri/target/release/bundle/nsis/Fuck DDL_0.3.0_x64-setup.exe`，3,353,420 bytes，SHA256 `C035E4672BD17B25A76A2BB6E292650FEB0E9B2A6862701B4AE6571D655381F3`；桌面 EXE 为 13,274,624 bytes，SHA256 `BAECEFB79D92CEA5732A880C40139CC75C35D6483BDBA68E91D401ED54628179`。
+- Authenticode 实测：安装器和桌面 EXE 均为 `NotSigned`；没有受信任 Windows 代码签名证书时不生成“正式签名发布物”。
+- 远端状态：`origin` 已配置为 `greatzhu-cyber/fuck-ddl`，但当前 GitHub CLI 不存在，Git Credential Manager 正在等待官方授权；完成后才能推送并核验远端 CI。公开 Release 仍不得在未签名条件下冒充正式发布。
